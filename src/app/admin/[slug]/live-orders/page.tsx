@@ -141,27 +141,27 @@ function KitchenLiveOrdersContent() {
 
   return (
     <AdminAuthGuard slug={slug}>
-      <div className="min-h-screen bg-neutral-950 text-stone-100 flex flex-col font-sans select-none antialiased">
+      <div className="min-h-screen bg-neutral-950 text-stone-100 flex flex-col font-sans select-none antialiased overflow-x-hidden w-full">
       {/* 1. Sleek Top Navigation Bar */}
-      <header className="bg-neutral-900 border-b border-neutral-800 px-6 py-3.5 sticky top-0 z-40 flex flex-wrap items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-center gap-3">
+      <header className="bg-neutral-900 border-b border-neutral-800 px-3.5 sm:px-6 py-3 sm:py-3.5 sticky top-0 z-40 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 shadow-xl">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <Link
             href={`/admin/${slug}/dashboard`}
-            className="p-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-stone-300 hover:text-white border border-neutral-700 transition"
+            className="p-2 sm:p-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-stone-300 hover:text-white border border-neutral-700 transition shrink-0"
             title="Back to Dashboard"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
 
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-extrabold text-lg text-white tracking-tight">Kitchen Order Terminal</h1>
-              <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[11px] font-bold rounded-full border border-emerald-500/30 flex items-center gap-1.5">
+              <h1 className="font-extrabold text-base sm:text-lg text-white tracking-tight truncate">Kitchen Terminal</h1>
+              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] sm:text-[11px] font-bold rounded-full border border-emerald-500/30 flex items-center gap-1.5 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Live Sync
               </span>
             </div>
-            <p className="text-xs text-stone-400">
+            <p className="text-xs text-stone-400 truncate">
               {restaurant?.name || slug} • Table Orders
             </p>
           </div>
@@ -175,10 +175,10 @@ function KitchenLiveOrdersContent() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={toggleAudio}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition ${
+            className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition ${
               audioEnabled
                 ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow-md'
                 : 'bg-neutral-800 text-stone-400 border border-neutral-700'
@@ -186,31 +186,31 @@ function KitchenLiveOrdersContent() {
           >
             {audioEnabled ? (
               <>
-                <Volume2 className="w-4 h-4 animate-bounce" />
-                <span>Audio Alert ON</span>
+                <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-bounce" />
+                <span className="hidden xs:inline">Audio ON</span>
               </>
             ) : (
               <>
-                <BellOff className="w-4 h-4" />
-                <span>Muted</span>
+                <BellOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Muted</span>
               </>
             )}
           </button>
 
           <button
             onClick={() => router.push(`/admin/${slug}/menu`)}
-            className="px-3.5 py-2 bg-neutral-850 hover:bg-neutral-800 text-stone-200 border border-neutral-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-neutral-850 hover:bg-neutral-800 text-stone-200 border border-neutral-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
           >
-            <BookOpen className="w-4 h-4 text-amber-400" />
+            <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
             <span className="hidden sm:inline">Menu & Stock</span>
           </button>
 
           <button
             onClick={() => fetchOrders(false)}
-            className="p-2 bg-neutral-850 hover:bg-neutral-800 text-stone-300 border border-neutral-700 rounded-xl transition"
+            className="p-1.5 sm:p-2 bg-neutral-850 hover:bg-neutral-800 text-stone-300 border border-neutral-700 rounded-xl transition"
             title="Refresh Orders"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       </header>

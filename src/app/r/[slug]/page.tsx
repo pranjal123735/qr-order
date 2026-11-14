@@ -224,7 +224,7 @@ function CustomerMenuContent() {
   const currency = restaurant?.currency || '$';
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 pb-32 font-sans select-none antialiased">
+    <div className="min-h-screen bg-stone-50 text-stone-900 pb-32 font-sans select-none antialiased overflow-x-hidden w-full">
       {/* 1. App Top Header (UberEats / DoorDash Mobile Style) */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-stone-200/80 shadow-xs">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">

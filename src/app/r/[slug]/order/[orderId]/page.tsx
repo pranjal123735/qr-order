@@ -118,7 +118,7 @@ function OrderTrackingContent() {
   const currency = '₹';
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-900 pb-24 font-sans select-none antialiased">
+    <div className="min-h-screen bg-stone-100 text-stone-900 pb-24 font-sans select-none antialiased overflow-x-hidden w-full">
       {/* Top Navbar */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-stone-200/80 px-4 py-3 flex items-center justify-between shadow-xs">
         <button
