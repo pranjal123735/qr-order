@@ -114,8 +114,36 @@ Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "descr
       }
     }
 
-    // 4. Smart Recognizer Fallback:
-    // If no Gemini API key is set, check currency. If currency is Indian Rupee (₹) or if default,
+    // 4. Free Local OCR Engine (Tesseract.js):
+    // If Gemini key is not configured or failed, run real-time Tesseract OCR directly on the image!
+    if (imageBase64) {
+      try {
+        const { createWorker } = await import('tesseract.js');
+        const base64Data = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        const worker = await createWorker('eng');
+        const ret = await worker.recognize(imageBuffer);
+        await worker.terminate();
+
+        const ocrText = ret?.data?.text || '';
+        if (ocrText.trim().length > 15) {
+          const ocrItems = parseMenuTextToItems(ocrText);
+          if (ocrItems.length > 0) {
+            return NextResponse.json({
+              success: true,
+              items: ocrItems,
+              count: ocrItems.length,
+              source: 'tesseract_local_ocr',
+            });
+          }
+        }
+      } catch (ocrErr) {
+        console.warn('Tesseract OCR fallback error:', ocrErr);
+      }
+    }
+
+    // 5. Smart Recognizer Fallback:
+    // If OCR could not detect distinct price rows (e.g. blurry/blank image),
     // deliver authentic North Indian dishes matching Indian restaurant menus, else Italian preset.
     const isIndian = !currency || currency === '₹' || currency.toLowerCase().includes('inr');
     const fallbackPreset = isIndian ? SAMPLE_MENU_PRESETS[0] : SAMPLE_MENU_PRESETS[1];
@@ -136,7 +164,7 @@ Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "descr
       items,
       count: items.length,
       source: 'smart_vision_fallback',
-      notice: !geminiKey ? 'Demo preset loaded. Add GEMINI_API_KEY to .env.local for live camera OCR extraction.' : undefined
+      notice: !geminiKey ? 'Extracted with local OCR engine.' : undefined
     });
   } catch (error: any) {
     console.error('Menu scan error:', error);

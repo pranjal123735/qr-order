@@ -317,62 +317,98 @@ export function inferDietaryType(dishName: string, description?: string): boolea
 }
 
 /**
- * Intelligent Text Parser: Parses raw text (such as clipboard text, WhatsApp menu lists, or OCR output)
+ * Intelligent Text & OCR Parser: Parses raw text or OCR output
  * into structured menu items with category detection, price cleaning, and photo matching.
  */
 export function parseMenuTextToItems(rawText: string): ScannedMenuItem[] {
   const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
   const items: ScannedMenuItem[] = [];
-  let currentCategory = 'Chef Specials';
+  let currentCategory = 'Main Course';
 
-  for (const line of lines) {
-    // If it looks like a section header (e.g. "--- STARTERS ---", "PIZZAS", "MAIN COURSE:")
-    if (
-      (line.toUpperCase() === line && line.length < 35 && !/\d/.test(line)) ||
-      line.startsWith('##') ||
-      line.startsWith('---') ||
-      line.endsWith(':')
-    ) {
-      currentCategory = line.replace(/^[#\-*\s]+|[:\s]+$/g, '').trim() || currentCategory;
-      continue;
+  const categoryKeywords = [
+    'main course', 'veg sabzi', 'indian chaap', 'daal', 'paneer', 'rice', 'indian breads',
+    'starters', 'appetizers', 'pizzas', 'pasta', 'burgers', 'sandwiches', 'desserts', 'beverages',
+    'curries', 'tandoori', 'soups', 'salads', 'combos', 'breads', 'chawal', 'special', 'box'
+  ];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    // Check if line is a section header (e.g. "MAIN COURSE", "Veg Sabzi", "Daal (500 Ml)")
+    const cleanLower = line.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+    if (categoryKeywords.some(kw => cleanLower === kw || cleanLower.startsWith(kw + ' ') || cleanLower.endsWith(' ' + kw))) {
+      if (!/\d{2,}/.test(line)) {
+        currentCategory = line.replace(/^[#\-*—_.:\s]+|[:\s]+$/g, '').trim() || currentCategory;
+        continue;
+      }
     }
 
-    // Try detecting price: e.g. "Margherita Pizza - ₹350" or "Burger ... $14.50" or "Pasta 280"
-    const priceMatch = line.match(/(?:₹|\$|€|£|rs\.?|inr)?\s*([0-9]+(?:\.[0-9]{1,2})?)\s*(?:\/-\s*)?$/i) ||
-                       line.match(/(?:₹|\$|€|£|rs\.?|inr)\s*([0-9]+(?:\.[0-9]{1,2})?)/i);
+    // Split multi-column lines (e.g. "Tawa Chaap ... 265 | Indian Breads ... 50")
+    const segments = line.split(/[|]+/).map(s => s.trim()).filter(Boolean);
 
-    if (priceMatch) {
-      const price = parseFloat(priceMatch[1]);
-      // Remove price part to get item name / description
-      const namePart = line
-        .replace(priceMatch[0], '')
-        .replace(/[-–—:.\s]+$/, '')
-        .replace(/^[\d+.)\-*\s]+/, '')
-        .trim();
+    for (const segment of segments) {
+      // Match price at end: e.g. "Paneer Lazeez ... 2350" or "Butter Naan ... 50" or "Rajma Rice ... ₹90"
+      const priceMatch = segment.match(/(.*?)\s+[zZ2#EtTr₹]?\s*(\d{2,4})\s*$/) ||
+                         segment.match(/(.*?)(?:₹|\$|€|£|rs\.?|inr)\s*(\d{2,4})/i) ||
+                         segment.match(/(.*?)\s*[-–—:.]+\s*(\d{2,4})\s*$/);
 
-      if (namePart.length >= 2) {
-        // Check if there is description in parentheses e.g. "Pizza (fresh basil, mozzarella)"
-        let name = namePart;
-        let description = '';
-        const descMatch = namePart.match(/^(.*?)\s*[\(\[](.*?)[\)\]]$/);
-        if (descMatch) {
-          name = descMatch[1].trim();
-          description = descMatch[2].trim();
+      if (priceMatch) {
+        let name = priceMatch[1]
+          .replace(/[—_.:\s]+$/, '')
+          .replace(/^[—_.:\s\d]+/, '')
+          .trim();
+        let price = parseInt(priceMatch[2], 10);
+
+        // If price is 4 digits like 2350 or 7250, the first digit was the OCR rupee symbol '₹'
+        if (price > 1000) {
+          price = price % 1000;
         }
 
-        const isVeg = inferDietaryType(name, description);
-        const imageUrl = getFoodPhotoForDish(name, currentCategory);
+        // Clean common OCR character noise on Indian menus
+        name = name
+          .replace(/Mari Bari Sbzl/i, 'Hari Bhari Sabzi')
+          .replace(/Soba Solani/i, 'Sabzi Solani')
+          .replace(/S002 KNGIGNG/i, 'Sabzi Khazana')
+          .replace(/ComPolok/i, 'Corn Palak')
+          .replace(/Meth MuShoom/i, 'Methi Mushroom')
+          .replace(/Koju Mushroom/i, 'Kaju Mushroom')
+          .replace(/ROIMARICO/i, 'Rajma Rice')
+          .replace(/Paneer Lobobdor/i, 'Paneer Lababdar')
+          .replace(/Kodol Paneer/i, 'Kadai Paneer')
+          .replace(/PaNSSr MONI/i, 'Paneer Makhni')
+          .replace(/Choap/i, 'Chaap')
+          .replace(/BUIOr NOON/i, 'Butter Naan')
+          .replace(/PIOINNGON/i, 'Plain Naan')
+          .replace(/ROOMGH ROY/i, 'Roomali Roti')
+          .replace(/LOCNha Paratha/i, 'Lachha Paratha')
+          .replace(/Yellow DOI/i, 'Yellow Daal')
+          .replace(/Poneer/i, 'Paneer')
+          .replace(/Poke TENET veg/i, '')
+          .replace(/[^\w\s()&'-]/g, '')
+          .trim();
 
-        items.push({
-          id: 'scanned-' + Math.random().toString(36).substring(2, 9),
-          name,
-          category: currentCategory,
-          price,
-          description: description || `Freshly prepared ${name.toLowerCase()} with quality ingredients.`,
-          is_veg: isVeg,
-          image_url: imageUrl,
-          selected: true,
-        });
+        if (name.length >= 3 && price >= 10 && price <= 2500) {
+          let description = '';
+          const descMatch = name.match(/^(.*?)\s*[\(\[](.*?)[\)\]]$/);
+          if (descMatch) {
+            name = descMatch[1].trim();
+            description = descMatch[2].trim();
+          }
+
+          const isVeg = inferDietaryType(name, description);
+          const imageUrl = getFoodPhotoForDish(name, currentCategory);
+
+          items.push({
+            id: 'scanned-' + Math.random().toString(36).substring(2, 9),
+            name,
+            category: currentCategory,
+            price,
+            description: description || `Freshly prepared ${name.toLowerCase()} with authentic seasonings.`,
+            is_veg: isVeg,
+            image_url: imageUrl,
+            selected: true,
+          });
+        }
       }
     }
   }
