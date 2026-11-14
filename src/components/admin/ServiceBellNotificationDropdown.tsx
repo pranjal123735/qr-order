@@ -25,7 +25,7 @@ import {
 
 interface ServiceBellNotificationDropdownProps {
   slug: string;
-  onCallResolved?: (callId: string) => void;
+  onCallResolved?: (callId?: string) => void | Promise<void>;
   className?: string;
 }
 

@@ -320,7 +320,7 @@ function DedicatedBellsContent() {
           {/* Controls */}
           <div className="flex items-center gap-2 shrink-0">
             {/* Notification Bell Dropdown with Count */}
-            <ServiceBellNotificationDropdown slug={slug} onCallResolved={fetchCalls} />
+            <ServiceBellNotificationDropdown slug={slug} onCallResolved={() => fetchCalls(false)} />
 
             <button
               onClick={toggleAudio}

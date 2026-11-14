@@ -275,7 +275,7 @@ function DashboardContent() {
 
           {/* Card 4: Table Service Bells & Waiter Dispatch */}
           <Link
-            href={`/admin/${slug}/live-orders?tab=BELLS`}
+            href={`/admin/${slug}/bells`}
             className="group relative p-5 sm:p-7 rounded-3xl bg-gradient-to-b from-stone-900 to-stone-900/90 border border-amber-500/40 hover:border-amber-400 hover:shadow-2xl hover:shadow-amber-500/10 transition-all duration-300 flex flex-col justify-between overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition" />

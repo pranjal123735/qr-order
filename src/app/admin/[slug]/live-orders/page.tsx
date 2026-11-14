@@ -7,6 +7,7 @@ import { Order, OrderStatus, Restaurant, ItemPrepStatus, ServiceCall, OrderItem 
 import { DataStore } from '@/lib/store';
 import { audioManager } from '@/lib/audio';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
+import { ServiceBellNotificationDropdown } from '@/components/admin/ServiceBellNotificationDropdown';
 import { 
   Bell, 
   BellOff, 
@@ -719,17 +720,21 @@ function KitchenLiveOrdersContent() {
 
           {/* Action Controls */}
           <div className="flex items-center gap-2 shrink-0">
-            {serviceCalls.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('BELLS')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-neutral-950 rounded-xl text-xs font-black shadow-lg transition active:scale-95 animate-bounce"
-                title="Open Table Service Bell Dispatch Center"
-              >
-                <BellRing className="w-4 h-4 stroke-[2.5]" />
-                <span>{serviceCalls.length} Bell Call{serviceCalls.length > 1 ? 's' : ''}</span>
-              </button>
-            )}
+            {/* Service Bell Notification Icon with Count & Popover List */}
+            <ServiceBellNotificationDropdown slug={slug} onCallResolved={() => fetchOrders()} />
+
+            <Link
+              href={`/admin/${slug}/bells`}
+              className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                serviceCalls.length > 0
+                  ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black shadow-md'
+                  : 'bg-neutral-850 hover:bg-neutral-800 text-stone-300 border border-neutral-700'
+              }`}
+              title="Open Separate Table Service Bells Page"
+            >
+              <BellRing className={`w-3.5 h-3.5 ${serviceCalls.length > 0 ? 'animate-bounce' : 'text-stone-400'}`} />
+              <span className="hidden sm:inline">Bells Page</span>
+            </Link>
 
             <button
               onClick={toggleAudio}

@@ -7,6 +7,7 @@ import { Restaurant, Category, MenuItem } from '@/types/database';
 import { DataStore } from '@/lib/store';
 import { MenuScannerModal } from './MenuScannerModal';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
+import { ServiceBellNotificationDropdown } from '@/components/admin/ServiceBellNotificationDropdown';
 import { getFoodPhotoForDish } from '@/lib/foodImageSearch';
 import { inferDietaryType } from '@/lib/menuScanner';
 import { 
@@ -202,6 +203,8 @@ function MenuManagerContent() {
 
           {/* Action Controls */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <ServiceBellNotificationDropdown slug={slug} />
+
             <button
               onClick={() => setIsScannerOpen(true)}
               className="px-2.5 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black rounded-2xl text-xs shadow-lg shadow-amber-500/20 transition flex items-center gap-1.5 sm:gap-2 active:scale-95"

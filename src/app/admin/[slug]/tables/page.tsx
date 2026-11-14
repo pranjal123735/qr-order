@@ -6,6 +6,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Restaurant } from '@/types/database';
 import { DataStore } from '@/lib/store';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
+import { ServiceBellNotificationDropdown } from '@/components/admin/ServiceBellNotificationDropdown';
 import { 
   ArrowLeft, 
   Printer, 
@@ -85,6 +86,8 @@ function TableQRManagerContent() {
                 +
               </button>
             </div>
+
+            <ServiceBellNotificationDropdown slug={slug} className="print:hidden" />
 
             <button
               onClick={handlePrint}
