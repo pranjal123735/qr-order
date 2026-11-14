@@ -15,7 +15,8 @@ import {
   UserCheck, 
   ArrowLeft,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  ExternalLink
 } from 'lucide-react';
 
 interface AdminAuthGuardProps {
@@ -193,25 +194,26 @@ export function AdminAuthGuard({ slug, children }: AdminAuthGuardProps) {
 
   // 3. AUTHENTICATED: Render protected admin page with a secure top banner
   return (
-    <div className="min-h-screen flex flex-col bg-stone-950">
+    <div className="min-h-screen flex flex-col bg-stone-950 overflow-x-hidden w-full">
       {/* Top Manager Security Bar */}
-      <div className="bg-stone-950 border-b border-stone-850 px-4 py-1.5 flex items-center justify-between text-[11px] text-stone-400 print:hidden z-50">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="hidden sm:inline font-medium">Logged in as:</span>
-          <span className="font-bold text-stone-200">{owner.email}</span>
-          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-stone-800 text-amber-400 border border-stone-700 uppercase">
+      <div className="bg-stone-950 border-b border-stone-850 px-3.5 sm:px-4 py-1.5 flex items-center justify-between text-[11px] text-stone-400 print:hidden z-50 gap-2 w-full">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span className="hidden sm:inline font-medium text-stone-500 shrink-0">Logged in:</span>
+          <span className="font-bold text-stone-200 truncate max-w-[140px] xs:max-w-[200px] sm:max-w-none">{owner.email}</span>
+          <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-black bg-stone-850 text-amber-400 border border-stone-700 uppercase shrink-0">
             {slug} Staff
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link
             href={`/r/${slug}?table=1`}
             target="_blank"
-            className="text-stone-400 hover:text-amber-400 transition"
+            className="hidden md:inline-flex items-center gap-1 text-stone-400 hover:text-amber-400 transition"
           >
-            Preview Diner QR Menu ↗
+            <span>Preview Diner Menu</span>
+            <ExternalLink className="w-3 h-3" />
           </Link>
           <button
             onClick={handleLogout}
@@ -219,12 +221,12 @@ export function AdminAuthGuard({ slug, children }: AdminAuthGuardProps) {
             title="Sign out of manager account"
           >
             <LogOut className="w-3 h-3" />
-            <span>Sign Out</span>
+            <span className="text-[11px]">Sign Out</span>
           </button>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-x-hidden w-full">
         {children}
       </div>
     </div>

@@ -117,19 +117,19 @@ function DashboardContent() {
       {/* 2. Main Content */}
       <main className="flex-1 p-4 sm:p-6 max-w-6xl mx-auto w-full space-y-6">
         {/* Banner with Customer Link */}
-        <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950/40 border border-stone-800 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
-          <div className="space-y-2 max-w-xl">
+        <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950/40 border border-stone-800 rounded-3xl p-4 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 shadow-xl">
+          <div className="space-y-2 max-w-xl w-full">
             <span className="px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-black uppercase tracking-wider rounded-full border border-amber-500/20">
               Your Diner Ordering Link
             </span>
-            <h2 className="text-xl sm:text-2xl font-black text-white">
+            <h2 className="text-lg sm:text-2xl font-black text-white">
               Diners scan QR codes to access this URL:
             </h2>
-            <div className="flex items-center gap-2 bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-xs font-mono text-amber-400">
-              <span className="truncate">{customerMenuUrl}</span>
+            <div className="flex items-center gap-2 bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-xs font-mono text-amber-400 w-full overflow-hidden">
+              <span className="truncate flex-1 min-w-0">{customerMenuUrl}</span>
               <button
                 onClick={handleCopyLink}
-                className="p-1 rounded hover:bg-stone-800 text-stone-400 hover:text-white flex-shrink-0"
+                className="p-1.5 rounded hover:bg-stone-800 text-stone-400 hover:text-white shrink-0"
                 title="Copy customer link"
               >
                 {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
@@ -137,7 +137,7 @@ function DashboardContent() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <div className="flex flex-wrap gap-2 w-full md:w-auto shrink-0">
             <a
               href={`/r/${slug}?table=1`}
               target="_blank"
@@ -151,26 +151,26 @@ function DashboardContent() {
         </div>
 
         {/* 3. Action Hub Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {/* Card 1: Kitchen Screen (KDS) */}
           <Link
             href={`/admin/${slug}/live-orders`}
-            className="group relative p-7 rounded-3xl bg-gradient-to-b from-stone-900 to-stone-900/90 border border-emerald-500/40 hover:border-emerald-400 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 flex flex-col justify-between overflow-hidden"
+            className="group relative p-5 sm:p-7 rounded-3xl bg-gradient-to-b from-stone-900 to-stone-900/90 border border-emerald-500/40 hover:border-emerald-400 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 flex flex-col justify-between overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition" />
             
             <div>
               <div className="flex items-center justify-between mb-4">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition shadow-lg">
-                  <ChefHat className="w-7 h-7" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition shadow-lg shrink-0">
+                  <ChefHat className="w-6 h-6 sm:w-7 sm:h-7" />
                 </div>
-                <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-[11px] font-black uppercase tracking-wider rounded-full border border-emerald-500/30 flex items-center gap-1.5 animate-pulse">
+                <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-full border border-emerald-500/30 flex items-center gap-1.5 animate-pulse shrink-0">
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                   Live Sync
                 </span>
               </div>
 
-              <h3 className="font-black text-white text-xl tracking-tight group-hover:text-emerald-300 transition">
+              <h3 className="font-black text-white text-lg sm:text-xl tracking-tight group-hover:text-emerald-300 transition">
                 Kitchen Display Screen (KDS)
               </h3>
               <p className="text-xs text-stone-400 mt-2 leading-relaxed">

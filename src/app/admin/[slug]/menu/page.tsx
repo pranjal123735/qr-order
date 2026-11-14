@@ -230,15 +230,15 @@ function MenuManagerContent() {
       {/* 2. Top Metric Strip */}
       <div className="bg-stone-900 border-b border-stone-800/80 px-3.5 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         {/* Metric Badges */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-stone-950 border border-stone-800 rounded-xl text-xs font-bold">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-stone-950 border border-stone-800 rounded-xl text-xs font-bold shrink-0">
             <span className="text-stone-400">Total Items:</span>
             <span className="text-white font-black">{totalItems}</span>
           </div>
 
           <button
             onClick={() => setFilterMode(filterMode === 'IN_STOCK' ? 'ALL' : 'IN_STOCK')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
               filterMode === 'IN_STOCK'
                 ? 'bg-emerald-500 text-stone-950 shadow-md'
                 : 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900/40'
@@ -250,7 +250,7 @@ function MenuManagerContent() {
 
           <button
             onClick={() => setFilterMode(filterMode === 'SOLD_OUT' ? 'ALL' : 'SOLD_OUT')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
               filterMode === 'SOLD_OUT'
                 ? 'bg-rose-500 text-white shadow-md'
                 : 'bg-rose-950/40 text-rose-400 border border-rose-500/30 hover:bg-rose-900/40'
@@ -275,7 +275,7 @@ function MenuManagerContent() {
       </div>
 
       {/* 3. Category Filter Navigation Bar */}
-      <div className="bg-stone-900/60 border-b border-stone-800/60 px-6 py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <div className="bg-stone-900/60 border-b border-stone-800/60 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center gap-2 custom-scrollbar">
         <button
           onClick={() => setSelectedCategory('ALL')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${

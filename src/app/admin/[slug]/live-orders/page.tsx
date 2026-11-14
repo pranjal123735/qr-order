@@ -216,11 +216,11 @@ function KitchenLiveOrdersContent() {
       </header>
 
       {/* 2. Status Metric Tabs */}
-      <div className="bg-neutral-900/60 border-b border-neutral-800 px-6 py-2.5 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <div className="bg-neutral-900/80 border-b border-neutral-800 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-3 overflow-hidden">
+        <div className="flex items-center gap-1.5 sm:gap-2 custom-scrollbar pb-1 w-full overflow-x-auto">
           <button
             onClick={() => setActiveTab('ALL')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === 'ALL'
                 ? 'bg-amber-500 text-neutral-950 shadow-sm'
                 : 'bg-neutral-800 text-stone-300 hover:bg-neutral-750'
@@ -234,13 +234,13 @@ function KitchenLiveOrdersContent() {
 
           <button
             onClick={() => setActiveTab('PENDING')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === 'PENDING'
                 ? 'bg-amber-500 text-neutral-950 shadow-sm ring-2 ring-amber-400'
                 : 'bg-amber-950/40 border border-amber-500/40 text-amber-400 hover:bg-amber-900/40'
             }`}
           >
-            <span className="relative flex h-2 w-2">
+            <span className="relative flex h-2 w-2 shrink-0">
               {pendingOrders.length > 0 && (
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               )}
@@ -254,13 +254,13 @@ function KitchenLiveOrdersContent() {
 
           <button
             onClick={() => setActiveTab('COOKING')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === 'COOKING'
                 ? 'bg-amber-500 text-neutral-950 shadow-sm'
                 : 'bg-neutral-800 text-emerald-400 hover:bg-neutral-750'
             }`}
           >
-            <Flame className="w-3.5 h-3.5 text-orange-400" />
+            <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
             <span>Cooking Now</span>
             <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
               {cookingOrders.length}
@@ -269,13 +269,13 @@ function KitchenLiveOrdersContent() {
 
           <button
             onClick={() => setActiveTab('SERVED')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === 'SERVED'
                 ? 'bg-amber-500 text-neutral-950 shadow-sm'
                 : 'bg-neutral-800 text-blue-400 hover:bg-neutral-750'
             }`}
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
             <span>Served</span>
             <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
               {servedOrders.length}
@@ -283,7 +283,7 @@ function KitchenLiveOrdersContent() {
           </button>
         </div>
 
-        <span className="hidden md:inline text-xs text-stone-400 font-medium">
+        <span className="hidden lg:inline text-xs text-stone-400 font-medium shrink-0">
           💡 Tap any item to check it off as you cook
         </span>
       </div>
