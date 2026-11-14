@@ -15,9 +15,11 @@ import {
   ShieldCheck,
   CheckCircle2
 } from 'lucide-react';
+import { useLanguage, LanguageSwitcher } from '@/lib/i18n';
 
 function RegisterContent() {
   const router = useRouter();
+  const { isHindi } = useLanguage();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -76,6 +78,10 @@ function RegisterContent() {
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-center p-4 selection:bg-amber-500 selection:text-stone-950">
       <div className="max-w-xl w-full space-y-6">
+        <div className="flex justify-end">
+          <LanguageSwitcher theme="dark" size="sm" />
+        </div>
+
         {/* Header */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 mb-2 group">
@@ -223,7 +229,7 @@ function RegisterContent() {
                   <div className="w-4 h-4 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>Create Account & Open Dashboard</span>
+                    <span>{isHindi ? 'खाता बनाएं और डैशबोर्ड खोलें' : 'Create Account & Open Dashboard'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

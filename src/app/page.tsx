@@ -53,9 +53,9 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col selection:bg-amber-500 selection:text-stone-950 font-sans overflow-x-hidden w-full">
-      {/* 1. Top Navbar */}
-      <header className="border-b border-stone-800/80 bg-stone-950/90 backdrop-blur-md sticky top-0 z-50 w-full">
+    <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col selection:bg-amber-500 selection:text-stone-950 font-sans overflow-x-clip w-full">
+      {/* 1. Top Navbar - Fixed at top */}
+      <header className="border-b border-stone-800/80 bg-stone-950/95 backdrop-blur-md fixed top-0 inset-x-0 z-50 w-full shadow-lg">
         <nav className="px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between max-w-6xl mx-auto w-full gap-2">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0 group">
@@ -124,7 +124,7 @@ export default function HomePage() {
       </header>
 
       {/* 2. Hero Section */}
-      <section className="pt-8 sm:pt-14 pb-10 sm:pb-16 px-4 sm:px-6 max-w-5xl mx-auto text-center space-y-4 sm:space-y-6">
+      <section className="pt-24 sm:pt-28 pb-10 sm:pb-16 px-4 sm:px-6 max-w-5xl mx-auto text-center space-y-4 sm:space-y-6">
         <div className="inline-flex max-w-full items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-center flex-wrap justify-center">
           <Sparkles className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate">{t.hero_badge}</span>

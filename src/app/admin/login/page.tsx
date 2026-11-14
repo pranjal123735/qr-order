@@ -14,11 +14,13 @@ import {
   AlertCircle,
   KeyRound
 } from 'lucide-react';
+import { useLanguage, LanguageSwitcher } from '@/lib/i18n';
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect');
+  const { isHindi } = useLanguage();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,6 +71,10 @@ function LoginContent() {
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-center p-4 selection:bg-amber-500 selection:text-stone-950">
       <div className="max-w-md w-full space-y-6">
+        <div className="flex justify-end">
+          <LanguageSwitcher theme="dark" size="sm" />
+        </div>
+
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 mb-2 group">
@@ -136,7 +142,7 @@ function LoginContent() {
                 <div className="w-4 h-4 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Sign In to Dashboard</span>
+                  <span>{isHindi ? 'डैशबोर्ड में साइन इन करें' : 'Sign In to Dashboard'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -147,7 +153,7 @@ function LoginContent() {
           <div className="relative flex items-center justify-center">
             <div className="border-t border-stone-800 w-full" />
             <span className="bg-stone-900 px-3 text-[11px] text-stone-500 font-bold uppercase">
-              Or Instant Demo
+              {isHindi ? 'या त्वरित डेमो' : 'Or Instant Demo'}
             </span>
             <div className="border-t border-stone-800 w-full" />
           </div>
@@ -159,7 +165,7 @@ function LoginContent() {
             className="w-full py-2.5 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
           >
             <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-            <span>1-Click Demo Login (The Rustic Grill)</span>
+            <span>{isHindi ? '1-क्लिक डेमो लॉगिन (The Rustic Grill)' : '1-Click Demo Login (The Rustic Grill)'}</span>
           </button>
         </div>
 

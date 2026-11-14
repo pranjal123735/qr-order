@@ -48,63 +48,65 @@ function TableQRManagerContent() {
 
   return (
     <AdminAuthGuard slug={slug}>
-      <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col select-none print:bg-white print:text-black overflow-x-hidden w-full">
-      {/* Screen-Only Header */}
-      <header className="bg-stone-900 border-b border-stone-800 px-3.5 sm:px-4 py-2.5 sm:py-3 sticky top-0 z-30 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 print:hidden">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <button
-            onClick={() => router.push(`/admin/${slug}/live-orders`)}
-            className="p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 transition shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-          <div className="min-w-0">
-            <h1 className="font-black text-base sm:text-lg text-white truncate">Table QR Generator & Print</h1>
-            <p className="text-xs text-stone-400 truncate">
-              Generate scannable table cards for your dining room
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Table count adjuster */}
-          <div className="flex items-center gap-1.5 sm:gap-2 bg-stone-800 px-2.5 sm:px-3 py-1.5 rounded-xl border border-stone-700 text-xs">
-            <span className="text-stone-400 font-semibold hidden xs:inline">Tables:</span>
+      <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col select-none print:bg-white print:text-black overflow-x-clip w-full">
+      {/* Screen-Only Header - Permanently Fixed at Top */}
+      <div className="fixed top-0 inset-x-0 z-50 bg-stone-900 border-b border-stone-800 shadow-xl print:hidden">
+        <header className="px-3.5 sm:px-4 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 border-b border-stone-800/80">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <button
-              onClick={() => setTableCount(Math.max(1, tableCount - 1))}
-              className="w-5 h-5 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center font-bold"
+              onClick={() => router.push(`/admin/${slug}/live-orders`)}
+              className="p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 transition shrink-0"
             >
-              -
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
-            <span className="font-bold text-amber-400 w-5 text-center">{tableCount}</span>
-            <button
-              onClick={() => setTableCount(tableCount + 1)}
-              className="w-5 h-5 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center font-bold"
-            >
-              +
-            </button>
+            <div className="min-w-0">
+              <h1 className="font-black text-base sm:text-lg text-white truncate">Table QR Generator & Print</h1>
+              <p className="text-xs text-stone-400 truncate">
+                Generate scannable table cards for your dining room
+              </p>
+            </div>
           </div>
 
-          <button
-            onClick={handlePrint}
-            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black shadow transition flex items-center gap-1.5 sm:gap-2 shrink-0"
-          >
-            <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="hidden xs:inline">Print </span>
-            <span>QR Cards</span>
-          </button>
-        </div>
-      </header>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Table count adjuster */}
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-stone-800 px-2.5 sm:px-3 py-1.5 rounded-xl border border-stone-700 text-xs">
+              <span className="text-stone-400 font-semibold hidden xs:inline">Tables:</span>
+              <button
+                onClick={() => setTableCount(Math.max(1, tableCount - 1))}
+                className="w-5 h-5 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center font-bold"
+              >
+                -
+              </button>
+              <span className="font-bold text-amber-400 w-5 text-center">{tableCount}</span>
+              <button
+                onClick={() => setTableCount(tableCount + 1)}
+                className="w-5 h-5 rounded bg-stone-700 hover:bg-stone-600 flex items-center justify-center font-bold"
+              >
+                +
+              </button>
+            </div>
 
-      {/* Screen Info Notice */}
-      <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-300 flex items-center justify-between print:hidden">
-        <span>
-          💡 <strong>Tip:</strong> Click <strong>&quot;Print All QR Cards&quot;</strong> to print standard 4×6 tabletop acrylic cards. Or click <strong>&quot;Test Table&quot;</strong> to open any table menu right now in a new tab!
-        </span>
+            <button
+              onClick={handlePrint}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-black shadow transition flex items-center gap-1.5 sm:gap-2 shrink-0"
+            >
+              <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Print </span>
+              <span>QR Cards</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Screen Info Notice */}
+        <div className="bg-amber-500/10 px-4 py-2 text-xs text-amber-300 flex items-center justify-between">
+          <span>
+            💡 <strong>Tip:</strong> Click <strong>&quot;Print All QR Cards&quot;</strong> to print standard 4×6 tabletop acrylic cards. Or click <strong>&quot;Test Table&quot;</strong> to open any table menu right now in a new tab!
+          </span>
+        </div>
       </div>
 
       {/* Printable Grid */}
-      <main className="flex-1 p-6 max-w-6xl mx-auto w-full">
+      <main className="flex-1 p-6 pt-28 print:pt-0 max-w-6xl mx-auto w-full">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 print:grid-cols-2 print:gap-4 print:p-0">
           {tables.map((tNum) => {
             const tableUrl = `${origin || ''}/r/${slug}?table=${tNum}`;

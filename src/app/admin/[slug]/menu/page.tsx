@@ -172,9 +172,9 @@ function MenuManagerContent() {
 
   return (
     <AdminAuthGuard slug={slug}>
-      <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col select-none font-sans overflow-x-hidden w-full">
-      {/* 1. Pinned Sticky Top Navigation & Filter Strip */}
-      <div className="sticky top-0 z-40 bg-stone-900 border-b border-stone-800 shadow-2xl backdrop-blur-md">
+      <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col select-none font-sans overflow-x-clip w-full">
+      {/* 1. Permanently Fixed Top Navigation & Filter Strip */}
+      <div className="fixed top-0 inset-x-0 z-50 bg-stone-900 border-b border-stone-800 shadow-2xl backdrop-blur-md">
         {/* Main Header Bar */}
         <header className="px-3.5 sm:px-6 py-3 sm:py-3.5 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 border-b border-stone-800/80">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -305,7 +305,7 @@ function MenuManagerContent() {
       </div>
 
       {/* 4. Menu Items Grid */}
-      <main className="flex-1 p-4 sm:p-6 max-w-6xl mx-auto w-full space-y-4 sm:space-y-5">
+      <main className="flex-1 p-4 sm:p-6 pt-44 sm:pt-44 max-w-6xl mx-auto w-full space-y-4 sm:space-y-5">
         {/* Instant AI Menu Scanner Banner */}
         <div className="bg-gradient-to-r from-amber-950/30 via-stone-900 to-stone-900 border border-amber-500/30 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
           <div className="flex items-start sm:items-center gap-3 sm:gap-3.5 min-w-0">

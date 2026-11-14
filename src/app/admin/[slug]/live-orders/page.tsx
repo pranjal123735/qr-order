@@ -159,9 +159,9 @@ function KitchenLiveOrdersContent() {
 
   return (
     <AdminAuthGuard slug={slug}>
-      <div className="min-h-screen bg-neutral-950 text-stone-100 flex flex-col font-sans select-none antialiased overflow-x-hidden w-full">
-      {/* 1. Pinned Sticky Header & Tabs Wrapper */}
-      <div className="sticky top-0 z-40 bg-neutral-900 border-b border-neutral-800 shadow-xl backdrop-blur-md">
+      <div className="min-h-screen bg-neutral-950 text-stone-100 flex flex-col font-sans select-none antialiased overflow-x-clip w-full">
+      {/* 1. Permanently Fixed Top Header & Tabs Bar */}
+      <div className="fixed top-0 inset-x-0 z-50 bg-neutral-900 border-b border-neutral-800 shadow-2xl backdrop-blur-md">
         {/* Sleek Top Navigation Bar */}
         <header className="px-3.5 sm:px-6 py-3 sm:py-3.5 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 border-b border-neutral-800/80">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -325,7 +325,7 @@ function KitchenLiveOrdersContent() {
       </div>
 
       {/* 3. Redesigned Ticket Cards Grid */}
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-6 pt-32 sm:pt-28 max-w-7xl mx-auto w-full">
         {loading ? (
           <div className="py-24 text-center text-stone-500">
             <RefreshCw className="w-8 h-8 mx-auto animate-spin mb-3 text-amber-500" />

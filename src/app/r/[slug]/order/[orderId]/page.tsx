@@ -22,6 +22,7 @@ import {
   Star,
   Rocket
 } from 'lucide-react';
+import { useLanguage, LanguageSwitcher } from '@/lib/i18n';
 
 function OrderTrackingContent() {
   const router = useRouter();
@@ -30,6 +31,7 @@ function OrderTrackingContent() {
   const slug = (routeParams?.slug as string) || 'rustic-grill';
   const orderId = (routeParams?.orderId as string) || '';
   const tableParam = searchParams.get('table');
+  const { t, isHindi } = useLanguage();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,10 +39,10 @@ function OrderTrackingContent() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  // Per-dish ratings and remarks state
-  const [itemReviews, setItemReviews] = useState<Record<string, OrderItemReview>>({});
+  // Per-dish reviews & overall rating state
   const [overallRating, setOverallRating] = useState<number>(5);
   const [overallComment, setOverallComment] = useState<string>('');
+  const [itemReviews, setItemReviews] = useState<Record<string, OrderItemReview>>({});
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
@@ -99,7 +101,7 @@ function OrderTrackingContent() {
         setCancelError(result.message);
       }
     } catch {
-      setCancelError('Failed to cancel order. Please notify waitstaff.');
+      setCancelError(t.cancel_error_default);
     } finally {
       setIsCancelling(false);
     }
@@ -151,7 +153,7 @@ function OrderTrackingContent() {
     return (
       <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 text-stone-700">
         <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="font-bold text-sm tracking-wide">Syncing with Kitchen...</p>
+        <p className="font-bold text-sm tracking-wide">{t.syncing_kitchen}</p>
       </div>
     );
   }
@@ -162,15 +164,15 @@ function OrderTrackingContent() {
         <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
           <XCircle className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-black text-stone-900">Order Not Found</h2>
+        <h2 className="text-xl font-black text-stone-900">{t.order_not_found}</h2>
         <p className="text-xs text-stone-500 mt-1 max-w-xs">
-          This order could not be loaded or has expired.
+          {t.order_expired_desc}
         </p>
         <button
           onClick={() => router.push(`/r/${slug}${tableParam ? `?table=${tableParam}` : ''}`)}
-          className="mt-6 px-6 py-3 bg-stone-950 text-white rounded-2xl text-xs font-black shadow-md"
+          className="mt-6 px-6 py-3 bg-stone-950 text-white rounded-2xl text-xs font-black shadow-md transition active:scale-95"
         >
-          Back to Menu
+          {t.btn_back_to_menu}
         </button>
       </div>
     );
@@ -186,25 +188,30 @@ function OrderTrackingContent() {
   const currency = '₹';
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-900 pb-24 font-sans select-none antialiased overflow-x-hidden w-full">
-      {/* Top Navbar - Fixed & Sticky */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/80 px-4 py-3 flex items-center justify-between shadow-xs">
+    <div className="min-h-screen bg-stone-100 text-stone-900 pb-24 font-sans select-none antialiased overflow-x-clip w-full">
+      {/* Top Navbar - Fixed at top */}
+      <header className="fixed top-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-b border-stone-200/80 px-4 py-3 flex items-center justify-between shadow-xs gap-2">
         <button
           onClick={() => router.push(`/r/${slug}?table=${tableNumber}`)}
           className="flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-stone-950 transition"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Menu</span>
+          <span>{t.btn_back_to_menu}</span>
         </button>
-        <span className="font-black text-sm text-stone-950">
-          Order #{order.id.slice(-6).toUpperCase()}
+
+        <span className="font-black text-xs sm:text-sm text-stone-950">
+          {t.order_hash}{order.id.slice(-6).toUpperCase()}
         </span>
-        <span className="px-3 py-1 bg-amber-500/15 text-amber-950 border border-amber-500/30 rounded-full font-black text-xs">
-          Table #{tableNumber}
-        </span>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <LanguageSwitcher theme="light" size="sm" />
+          <span className="px-2.5 sm:px-3 py-1 bg-amber-500/15 text-amber-950 border border-amber-500/30 rounded-full font-black text-xs">
+            {t.table_number}{tableNumber}
+          </span>
+        </div>
       </header>
 
-      <main className="max-w-lg mx-auto p-4 space-y-4">
+      <main className="max-w-lg mx-auto p-4 pt-16 space-y-4">
         {/* 1. Live Animated Status Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200/90 shadow-md text-center space-y-5">
           {/* PENDING STATE */}
@@ -219,13 +226,13 @@ function OrderTrackingContent() {
 
               <div>
                 <span className="px-3 py-1 bg-amber-100 text-amber-900 text-[11px] font-black uppercase tracking-wider rounded-full">
-                  Waiting for Kitchen Confirmation
+                  {t.status_pending_badge}
                 </span>
                 <h2 className="text-2xl font-black text-stone-950 mt-2">
-                  Order Sent to Kitchen!
+                  {t.status_pending_title}
                 </h2>
                 <p className="text-xs text-stone-500 mt-1 max-w-xs mx-auto leading-relaxed">
-                  Your order has been transmitted to Table #{tableNumber}&apos;s kitchen terminal.
+                  {t.status_pending_desc.replace('{table}', String(tableNumber))}
                 </p>
               </div>
 
@@ -236,11 +243,11 @@ function OrderTrackingContent() {
                   className="w-full py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-xs rounded-2xl border border-rose-200 transition active:scale-98 flex items-center justify-center gap-2 shadow-xs"
                 >
                   <XCircle className="w-4 h-4 text-rose-600" />
-                  <span>Cancel Order Now</span>
+                  <span>{t.btn_cancel_order_now}</span>
                 </button>
                 <p className="text-[11px] text-stone-400 mt-2 flex items-center justify-center gap-1 font-medium">
                   <ShieldCheck className="w-3.5 h-3.5 text-stone-400" />
-                  Free cancellation until kitchen hits &quot;Accept&quot;.
+                  {t.free_cancel_subtext}
                 </p>
               </div>
             </div>
@@ -255,20 +262,20 @@ function OrderTrackingContent() {
 
               <div>
                 <span className="px-3.5 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-black uppercase tracking-wider rounded-full">
-                  {order.status === 'PREPARING' ? 'Cooking on the Stove' : 'Order Confirmed'}
+                  {order.status === 'PREPARING' ? t.status_cooking_badge : t.status_confirmed_badge}
                 </span>
                 <h2 className="text-2xl font-black text-stone-950 mt-2">
-                  Chef is Cooking Your Food! 🍳
+                  {t.status_cooking_title}
                 </h2>
                 <p className="text-xs text-stone-500 mt-1 max-w-xs mx-auto leading-relaxed">
-                  The kitchen staff confirmed your order and dishes are cooking now. Sit back and relax!
+                  {t.status_cooking_desc}
                 </p>
               </div>
 
               {/* Cancellation Locked Notice */}
               <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl text-xs text-stone-600 flex items-center justify-center gap-2 font-bold">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span>Cooking in progress (cancellation locked)</span>
+                <span>{t.cancellation_locked}</span>
               </div>
             </div>
           )}
@@ -285,13 +292,13 @@ function OrderTrackingContent() {
 
               <div>
                 <span className="px-3.5 py-1 bg-orange-100 text-orange-900 text-[11px] font-black uppercase tracking-wider rounded-full border border-orange-300">
-                  Food Cooked • On the Way!
+                  {t.status_ontheway_badge}
                 </span>
                 <h2 className="text-2xl font-black text-stone-950 mt-2">
-                  Coming to Table #{tableNumber}! 🚀
+                  {t.status_ontheway_title.replace('{table}', String(tableNumber))}
                 </h2>
                 <p className="text-xs text-stone-600 mt-1 max-w-xs mx-auto leading-relaxed">
-                  Your dishes have finished cooking! Our staff is carrying them straight to your table now.
+                  {t.status_ontheway_desc}
                 </p>
               </div>
             </div>
@@ -306,13 +313,13 @@ function OrderTrackingContent() {
 
               <div>
                 <span className="px-3.5 py-1 bg-blue-100 text-blue-800 text-[11px] font-black uppercase tracking-wider rounded-full">
-                  Served to Table #{tableNumber}
+                  {t.status_served_badge.replace('{table}', String(tableNumber))}
                 </span>
                 <h2 className="text-2xl font-black text-stone-950 mt-2">
-                  Enjoy Your Meal! 🍽️
+                  {t.status_served_title}
                 </h2>
                 <p className="text-xs text-stone-500 mt-1 max-w-xs mx-auto leading-relaxed">
-                  Your dishes have been served. Please rate each dish below and add your remarks!
+                  {t.status_served_desc}
                 </p>
               </div>
             </div>
@@ -327,21 +334,21 @@ function OrderTrackingContent() {
 
               <div>
                 <span className="px-3 py-1 bg-stone-200 text-stone-700 text-[11px] font-black uppercase tracking-wider rounded-full">
-                  Cancelled
+                  {t.status_cancelled_badge}
                 </span>
                 <h2 className="text-xl font-black text-stone-900 mt-2">
-                  Order was Cancelled
+                  {t.status_cancelled_title}
                 </h2>
                 <p className="text-xs text-stone-500 mt-1 max-w-xs mx-auto">
-                  You cancelled this order before the kitchen confirmed it. No charge.
+                  {t.status_cancelled_desc}
                 </p>
               </div>
 
               <button
                 onClick={() => router.push(`/r/${slug}?table=${tableNumber}`)}
-                className="w-full py-3 bg-stone-950 text-white text-xs font-black rounded-2xl shadow-md"
+                className="w-full py-3 bg-stone-950 text-white text-xs font-black rounded-2xl shadow-md transition active:scale-95"
               >
-                Place New Order
+                {t.btn_place_new_order}
               </button>
             </div>
           )}
@@ -355,21 +362,21 @@ function OrderTrackingContent() {
 
               <div>
                 <span className="px-3 py-1 bg-rose-100 text-rose-800 text-[11px] font-black uppercase tracking-wider rounded-full">
-                  Declined
+                  {t.status_declined_badge}
                 </span>
                 <h2 className="text-xl font-black text-stone-900 mt-2">
-                  Kitchen Could Not Accept Order
+                  {t.status_declined_title}
                 </h2>
                 <p className="text-xs text-stone-500 mt-1 max-w-xs mx-auto">
-                  One or more dishes are sold out. Please ask waitstaff for recommendations.
+                  {t.status_declined_desc}
                 </p>
               </div>
 
               <button
                 onClick={() => router.push(`/r/${slug}?table=${tableNumber}`)}
-                className="w-full py-3 bg-stone-950 text-white text-xs font-black rounded-2xl shadow-md"
+                className="w-full py-3 bg-stone-950 text-white text-xs font-black rounded-2xl shadow-md transition active:scale-95"
               >
-                Choose Different Dishes
+                {t.btn_choose_different}
               </button>
             </div>
           )}
@@ -379,7 +386,7 @@ function OrderTrackingContent() {
         {!isCancelled && !isRejected && (
           <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-xs">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-stone-400 mb-4">
-              Order Progress
+              {t.step_progress_title}
             </h4>
             <div className="relative flex items-center justify-between text-center">
               <div className="absolute top-1/2 left-6 right-6 -translate-y-1/2 h-1 bg-stone-100 -z-0" />
@@ -389,7 +396,7 @@ function OrderTrackingContent() {
                 <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-black shadow-xs">
                   ✓
                 </div>
-                <span className="text-[10px] font-bold text-stone-900 mt-1.5">Sent</span>
+                <span className="text-[10px] font-bold text-stone-900 mt-1.5">{t.step_sent}</span>
               </div>
 
               {/* Step 2: Cooking */}
@@ -403,7 +410,7 @@ function OrderTrackingContent() {
                 >
                   {isConfirmed || isOnTheWay || isServed ? '✓' : '2'}
                 </div>
-                <span className="text-[10px] font-bold text-stone-900 mt-1.5">Cooking</span>
+                <span className="text-[10px] font-bold text-stone-900 mt-1.5">{t.step_cooking}</span>
               </div>
 
               {/* Step 3: On The Way */}
@@ -417,7 +424,7 @@ function OrderTrackingContent() {
                 >
                   {isServed ? '✓' : isOnTheWay ? '🚀' : '3'}
                 </div>
-                <span className="text-[10px] font-bold text-stone-900 mt-1.5">On the Way</span>
+                <span className="text-[10px] font-bold text-stone-900 mt-1.5">{t.step_ontheway}</span>
               </div>
 
               {/* Step 4: Served */}
@@ -429,7 +436,7 @@ function OrderTrackingContent() {
                 >
                   {isServed ? '✓' : '4'}
                 </div>
-                <span className="text-[10px] font-bold text-stone-900 mt-1.5">Served</span>
+                <span className="text-[10px] font-bold text-stone-900 mt-1.5">{t.step_served}</span>
               </div>
             </div>
           </div>
@@ -440,7 +447,9 @@ function OrderTrackingContent() {
           <div className="flex items-center justify-between pb-3 border-b border-stone-100">
             <div className="flex items-center gap-2">
               <Receipt className="w-4 h-4 text-stone-500" />
-              <h3 className="font-black text-sm text-stone-950">Table #{tableNumber} Items</h3>
+              <h3 className="font-black text-sm text-stone-950">
+                {t.receipt_table_items.replace('{table}', String(tableNumber))}
+              </h3>
             </div>
             <span className="text-xs text-stone-400 font-mono">
               {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -461,17 +470,17 @@ function OrderTrackingContent() {
                     {/* Real-time cooked status badge */}
                     {item.is_prepared ? (
                       <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" /> Cooked & Ready
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" /> {t.cooked_and_ready}
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-medium rounded-md">
-                        Preparing
+                        {t.preparing_status}
                       </span>
                     )}
                   </div>
                   {item.notes && (
                     <p className="text-[11px] text-amber-700 italic pl-7 mt-0.5 font-medium">
-                      Note: {item.notes}
+                      {t.special_note_label}{item.notes}
                     </p>
                   )}
                 </div>
@@ -484,13 +493,13 @@ function OrderTrackingContent() {
 
           {order.notes && (
             <div className="p-3 bg-stone-50 rounded-2xl text-xs text-stone-700 border border-stone-200">
-              <strong className="text-stone-900">Special Note: </strong>
+              <strong className="text-stone-900">{t.special_note_label}</strong>
               {order.notes}
             </div>
           )}
 
           <div className="pt-3 border-t border-stone-100 flex items-center justify-between font-black text-lg text-stone-950">
-            <span>Total Bill</span>
+            <span>{t.total_bill}</span>
             <span>{currency}{order.total_amount.toFixed(0)}</span>
           </div>
         </div>
@@ -501,8 +510,8 @@ function OrderTrackingContent() {
             <div className="flex items-center gap-2.5 pb-3 border-b border-stone-100">
               <Sparkles className="w-5 h-5 text-amber-500" />
               <div>
-                <h3 className="font-black text-sm text-stone-950">Rate Each Dish & Add Remarks</h3>
-                <p className="text-[11px] text-stone-500">How did you enjoy each food item? Share your remarks!</p>
+                <h3 className="font-black text-sm text-stone-950">{t.rate_dish_title}</h3>
+                <p className="text-[11px] text-stone-500">{t.rate_dish_subtitle}</p>
               </div>
             </div>
 
@@ -541,7 +550,7 @@ function OrderTrackingContent() {
                   {/* Remark input for this item */}
                   <input
                     type="text"
-                    placeholder={`Remark for ${item.item_name} (e.g. Delicious, crisp, flavorful)...`}
+                    placeholder={t.remark_for_dish.replace('{dish}', item.item_name)}
                     value={itemReviews[item.id]?.remark ?? item.remark ?? ''}
                     onChange={(e) => handleItemRemarkChange(item.id, e.target.value)}
                     className="w-full px-3 py-1.5 bg-white text-stone-900 text-xs rounded-xl border border-stone-200 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -553,7 +562,7 @@ function OrderTrackingContent() {
             {/* Overall Experience Rating */}
             <div className="pt-3 border-t border-stone-100 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-stone-800">Overall Meal Rating:</span>
+                <span className="text-xs font-bold text-stone-800">{t.overall_meal_rating}</span>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -576,7 +585,7 @@ function OrderTrackingContent() {
 
               <textarea
                 rows={2}
-                placeholder="Overall comment or note for the kitchen team..."
+                placeholder={t.overall_comment_placeholder}
                 value={overallComment}
                 onChange={(e) => setOverallComment(e.target.value)}
                 className="w-full p-2.5 bg-stone-50 text-stone-900 text-xs rounded-xl border border-stone-200 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -590,11 +599,11 @@ function OrderTrackingContent() {
               className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 active:scale-98"
             >
               <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-              <span>{reviewSubmitted ? 'Update Dish Reviews' : 'Submit Dish Ratings & Remarks'}</span>
+              <span>{reviewSubmitted ? t.btn_update_reviews : t.btn_submit_reviews}</span>
             </button>
             {reviewSubmitted && (
               <p className="text-center text-xs text-emerald-700 font-bold bg-emerald-50 py-1.5 px-3 rounded-xl border border-emerald-200">
-                ✓ Thank you! Your ratings & remarks were saved and shared with the kitchen.
+                {t.review_submitted_thanks}
               </p>
             )}
           </div>
@@ -607,7 +616,7 @@ function OrderTrackingContent() {
             className="w-full py-4 bg-stone-950 hover:bg-stone-900 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-98"
           >
             <PlusCircle className="w-4 h-4 text-amber-400" />
-            <span>Order More Drinks or Dishes (Table #{tableNumber})</span>
+            <span>{t.btn_order_more.replace('{table}', String(tableNumber))}</span>
           </button>
         )}
       </main>
@@ -620,9 +629,9 @@ function OrderTrackingContent() {
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-black text-lg text-stone-950">Cancel Your Order?</h3>
+              <h3 className="font-black text-lg text-stone-950">{t.cancel_modal_title}</h3>
               <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-                Are you sure you want to cancel Table #{tableNumber}&apos;s order? Once cancelled, you will need to place a new order.
+                {t.cancel_modal_desc.replace('{table}', String(tableNumber))}
               </p>
             </div>
 
@@ -637,14 +646,14 @@ function OrderTrackingContent() {
                 onClick={() => setShowCancelConfirm(false)}
                 className="py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-black text-xs rounded-xl transition"
               >
-                No, Keep
+                {t.btn_keep_order}
               </button>
               <button
                 disabled={isCancelling}
                 onClick={handleCancelOrder}
                 className="py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-md transition disabled:opacity-50 flex items-center justify-center"
               >
-                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                {isCancelling ? t.cancelling_text : t.btn_yes_cancel}
               </button>
             </div>
           </div>

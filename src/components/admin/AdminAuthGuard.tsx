@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ExternalLink
 } from 'lucide-react';
+import { LanguageSwitcher } from '@/lib/i18n';
 
 interface AdminAuthGuardProps {
   slug: string;
@@ -209,6 +210,7 @@ export function AdminAuthGuard({ slug, children }: AdminAuthGuardProps) {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <LanguageSwitcher theme="dark" size="sm" />
           <Link
             href={`/r/${slug}?table=1`}
             target="_blank"

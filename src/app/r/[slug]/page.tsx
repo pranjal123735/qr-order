@@ -230,9 +230,9 @@ function CustomerMenuContent() {
   const currency = (!restaurant?.currency || restaurant.currency === '$') ? '₹' : restaurant.currency;
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 pb-32 font-sans select-none antialiased overflow-x-hidden w-full">
-      {/* 1. App Top Header (UberEats / DoorDash Mobile Style) */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-stone-200/80 shadow-xs">
+    <div className="min-h-screen bg-stone-50 text-stone-900 pb-32 font-sans select-none antialiased overflow-x-clip w-full">
+      {/* 1. Permanently Fixed Top App Header */}
+      <header className="fixed top-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-b border-stone-200/80 shadow-md">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between gap-2">
           {/* Restaurant identity */}
           <div className="flex items-center gap-2.5 min-w-0">
@@ -365,7 +365,7 @@ function CustomerMenuContent() {
       </header>
 
       {/* 4. Menu Items List (Mobile Card Style with Floating Image Stepper) */}
-      <main className="max-w-lg mx-auto px-4 pt-3 space-y-3">
+      <main className={`max-w-lg mx-auto px-4 ${activeOrderId ? 'pt-44' : 'pt-36'} space-y-3`}>
         {filteredItems.length === 0 ? (
           <div className="py-20 text-center text-stone-400">
             <UtensilsCrossed className="w-12 h-12 mx-auto mb-2 text-stone-300 opacity-60" />
