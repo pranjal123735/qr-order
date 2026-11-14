@@ -31,6 +31,7 @@ import {
   Wand2,
   Image as ImageIcon
 } from 'lucide-react';
+import { translateFoodName } from '@/lib/foodTranslations';
 
 function MenuManagerContent() {
   const router = useRouter();
@@ -414,6 +415,11 @@ function MenuManagerContent() {
                       <h3 className="font-black text-base sm:text-lg text-white leading-tight truncate">
                         {item.name}
                       </h3>
+                      {translateFoodName(item.name, true) !== item.name && (
+                        <p className="text-xs font-semibold text-amber-400 mt-0.5">
+                          {translateFoodName(item.name, true)}
+                        </p>
+                      )}
                       <p className="text-xs text-stone-400 line-clamp-2 mt-1 leading-relaxed">
                         {item.description || 'No description provided.'}
                       </p>

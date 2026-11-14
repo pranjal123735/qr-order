@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Order, OrderStatus, Restaurant } from '@/types/database';
+import { Order, OrderStatus, Restaurant, ItemPrepStatus } from '@/types/database';
 import { DataStore } from '@/lib/store';
 import { audioManager } from '@/lib/audio';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
@@ -27,6 +27,7 @@ import {
   Rocket,
   Star
 } from 'lucide-react';
+import { translateFoodName } from '@/lib/foodTranslations';
 
 function KitchenLiveOrdersContent() {
   const router = useRouter();
@@ -112,7 +113,23 @@ function KitchenLiveOrdersContent() {
       ...prev,
       [dishId]: newVal,
     }));
-    await DataStore.toggleOrderItemPrepared(orderId, dishId, newVal);
+    await DataStore.updateOrderItemStatus(orderId, dishId, newVal ? 'READY' : 'COOKING');
+    fetchOrders(false);
+  };
+
+  const cycleDishStatus = async (orderId: string, dishId: string, currentStatus?: ItemPrepStatus, isPrepared?: boolean) => {
+    let effective: ItemPrepStatus = currentStatus || (isPrepared ? 'READY' : 'COOKING');
+    let nextStatus: ItemPrepStatus = 'COOKING';
+    if (effective === 'QUEUED' || effective === 'PENDING') {
+      nextStatus = 'COOKING';
+    } else if (effective === 'COOKING') {
+      nextStatus = 'READY';
+    } else if (effective === 'READY') {
+      nextStatus = 'QUEUED';
+    }
+    setCheckedDishIds(prev => ({ ...prev, [dishId]: nextStatus === 'READY' }));
+    await DataStore.updateOrderItemStatus(orderId, dishId, nextStatus);
+    fetchOrders(false);
   };
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
@@ -319,7 +336,7 @@ function KitchenLiveOrdersContent() {
           </div>
 
           <span className="hidden lg:inline text-xs text-stone-400 font-medium shrink-0">
-            💡 Tap any item to check it off as cooked
+            💡 Tap checkbox for Ready, or tap status pill (⏳ Queued / 🍳 Cooking / ✓ Ready) to cycle dish status
           </span>
         </div>
       </div>
@@ -397,52 +414,92 @@ function KitchenLiveOrdersContent() {
                     </div>
                   </div>
 
-                  {/* Body: Clean Checklist with Strike-through */}
+                  {/* Body: Clean Checklist with Status Pills */}
                   <div className="p-5 flex-1 space-y-3">
                     <div className="divide-y divide-neutral-800/80">
                       {order.items?.map((item) => {
                         const isChecked = !!(checkedDishIds[item.id] || item.is_prepared);
+                        const itemStatus: ItemPrepStatus = item.item_status || (isChecked ? 'READY' : (isPending ? 'PENDING' : 'QUEUED'));
 
                         return (
                           <div
                             key={item.id}
-                            onClick={() => toggleDishChecked(order.id, item.id, isChecked)}
-                            className={`py-3 first:pt-0 last:pb-0 cursor-pointer rounded-xl transition ${
-                              isChecked ? 'opacity-50' : 'hover:bg-neutral-850/40'
+                            className={`py-3 first:pt-0 last:pb-0 rounded-xl transition ${
+                              isChecked ? 'opacity-70' : 'hover:bg-neutral-850/40'
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                {/* Clean Checkbox */}
-                                <div
-                                  className={`w-5 h-5 rounded-lg flex items-center justify-center border transition flex-shrink-0 ${
+                                {/* Clean Checkbox to toggle Ready */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleDishChecked(order.id, item.id, isChecked);
+                                  }}
+                                  className={`w-5 h-5 rounded-lg flex items-center justify-center border transition flex-shrink-0 cursor-pointer ${
                                     isChecked
                                       ? 'bg-emerald-500 border-emerald-500 text-neutral-950'
-                                      : 'border-neutral-700 bg-neutral-950'
+                                      : 'border-neutral-700 bg-neutral-950 hover:border-amber-500'
                                   }`}
+                                  title="Check off as Ready"
                                 >
                                   {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                                </div>
+                                </button>
 
                                 {/* Quantity Pill */}
                                 <span className="px-2 py-0.5 bg-neutral-800 text-amber-400 font-black text-xs rounded-md flex-shrink-0">
                                   {item.quantity}×
                                 </span>
 
-                                {/* Dish Name */}
-                                <span
-                                  className={`font-bold text-sm text-white flex-1 leading-snug ${
-                                    isChecked ? 'line-through text-stone-400' : ''
-                                  }`}
-                                >
-                                  {item.item_name}
-                                </span>
+                                {/* Dish Name with Hindi translation */}
+                                <div className="flex-1 min-w-0">
+                                  <span
+                                    className={`font-bold text-sm text-white block leading-snug ${
+                                      isChecked ? 'line-through text-stone-400' : ''
+                                    }`}
+                                  >
+                                    {item.item_name}
+                                  </span>
+                                  {translateFoodName(item.item_name, true) !== item.item_name && (
+                                    <span className="text-[11px] text-amber-400 font-semibold block leading-tight mt-0.5">
+                                      {translateFoodName(item.item_name, true)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
-                              {/* Price in Rupee */}
-                              <span className="text-xs font-mono font-semibold text-stone-400">
-                                {currency}{(item.item_price * item.quantity).toFixed(0)}
-                              </span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {/* Interactive Status Badge (Tap to cycle status: Queued -> Cooking -> Ready) */}
+                                {isPending ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-800 text-stone-400 border border-neutral-700">
+                                    🕒 Awaiting Accept
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => cycleDishStatus(order.id, item.id, item.item_status, item.is_prepared)}
+                                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition active:scale-95 cursor-pointer flex items-center gap-1 ${
+                                      itemStatus === 'READY'
+                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                        : itemStatus === 'COOKING'
+                                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse'
+                                          : 'bg-stone-850 text-stone-400 border border-stone-750 hover:border-stone-600'
+                                    }`}
+                                    title="Click to cycle: Queued -> Cooking -> Ready"
+                                  >
+                                    {itemStatus === 'READY' && <><span>✓</span><span>Ready</span></>}
+                                    {itemStatus === 'COOKING' && <><span>🍳</span><span>Cooking</span></>}
+                                    {itemStatus === 'QUEUED' && <><span>⏳</span><span>Queued</span></>}
+                                    {itemStatus === 'PENDING' && <><span>🕒</span><span>Queued</span></>}
+                                  </button>
+                                )}
+
+                                {/* Price in Rupee */}
+                                <span className="text-xs font-mono font-semibold text-stone-400">
+                                  {currency}{(item.item_price * item.quantity).toFixed(0)}
+                                </span>
+                              </div>
                             </div>
 
                             {/* Refined Cooking Note Callout */}

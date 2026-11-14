@@ -75,6 +75,21 @@ class AudioManager {
     }
   }
 
+  // Authentic service / desk bell chime (metallic dual-harmonic desk ring)
+  public playServiceBell() {
+    if (this.isMuted) return;
+    try {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      this.playTone(ctx, 2093, now, 0.9, 'sine');
+      this.playTone(ctx, 3135.96, now, 0.5, 'sine');
+      this.playTone(ctx, 4186, now, 0.25, 'triangle');
+    } catch (e) {
+      console.warn('Bell tone error:', e);
+    }
+  }
+
   private playTone(ctx: AudioContext, freq: number, startTime: number, duration: number, type: OscillatorType) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();

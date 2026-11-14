@@ -20,9 +20,12 @@ import {
   Sparkles,
   ArrowRight,
   Star,
-  Rocket
+  Rocket,
+  Flame,
+  Check
 } from 'lucide-react';
 import { useLanguage, LanguageSwitcher } from '@/lib/i18n';
+import { translateFoodName } from '@/lib/foodTranslations';
 
 function OrderTrackingContent() {
   const router = useRouter();
@@ -442,6 +445,171 @@ function OrderTrackingContent() {
           </div>
         )}
 
+        {/* 2b. Eye-Appealing Live Dish-by-Dish Status Tracker */}
+        {!isCancelled && !isRejected && order.items && order.items.length > 0 && (() => {
+          const items = order.items;
+          const totalItemsCount = items.length;
+          const readyItemsCount = items.filter(it => it.item_status === 'READY' || it.is_prepared).length;
+          const cookingItemsCount = items.filter(it => it.item_status === 'COOKING').length;
+          const queuedItemsCount = items.filter(it => it.item_status === 'QUEUED' || (!it.item_status && !it.is_prepared && !isPending)).length;
+          const pendingItemsCount = isPending ? totalItemsCount : items.filter(it => it.item_status === 'PENDING').length;
+
+          const readyPct = totalItemsCount > 0 ? (readyItemsCount / totalItemsCount) * 100 : 0;
+          const cookingPct = totalItemsCount > 0 ? (cookingItemsCount / totalItemsCount) * 100 : 0;
+          const queuedPct = totalItemsCount > 0 ? ((queuedItemsCount + (isPending ? 0 : pendingItemsCount)) / totalItemsCount) * 100 : 0;
+
+          return (
+            <div className="bg-white rounded-3xl p-5 border border-stone-200/90 shadow-sm space-y-4">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-700 flex items-center justify-center flex-shrink-0">
+                    <ChefHat className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm text-stone-950 flex items-center gap-2">
+                      <span>{t.live_dish_tracker_title}</span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
+                        {totalItemsCount} {isHindi ? 'व्यंजन' : 'items'}
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-stone-500 font-medium">
+                      {t.live_dish_tracker_subtitle}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual Multi-Segment Progress Strip */}
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-full bg-stone-100 rounded-full overflow-hidden flex gap-1 p-0.5">
+                  {readyPct > 0 && (
+                    <div 
+                      style={{ width: `${readyPct}%` }} 
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                      title={`${readyItemsCount} Ready`}
+                    />
+                  )}
+                  {cookingPct > 0 && (
+                    <div 
+                      style={{ width: `${cookingPct}%` }} 
+                      className="h-full bg-amber-500 rounded-full animate-pulse transition-all duration-500"
+                      title={`${cookingItemsCount} Cooking`}
+                    />
+                  )}
+                  {queuedPct > 0 && (
+                    <div 
+                      style={{ width: `${queuedPct}%` }} 
+                      className="h-full bg-stone-300 rounded-full transition-all duration-500"
+                      title={`${queuedItemsCount} Queued`}
+                    />
+                  )}
+                </div>
+
+                {/* Status Summary Pills */}
+                <div className="flex items-center justify-between text-[11px] font-bold text-stone-500 px-0.5 flex-wrap gap-1.5 pt-0.5">
+                  {readyItemsCount > 0 && (
+                    <span className="flex items-center gap-1 text-emerald-700 font-black">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span>{readyItemsCount} {isHindi ? 'तैयार' : 'Ready'}</span>
+                    </span>
+                  )}
+                  {cookingItemsCount > 0 && (
+                    <span className="flex items-center gap-1 text-amber-700 font-black">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                      <span>{cookingItemsCount} {isHindi ? 'पक रहा है' : 'Cooking'}</span>
+                    </span>
+                  )}
+                  {(queuedItemsCount > 0 || (isPending && totalItemsCount > 0)) && (
+                    <span className="flex items-center gap-1 text-stone-500 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-stone-400" />
+                      <span>
+                        {isPending 
+                          ? `${totalItemsCount} ${isHindi ? 'पुष्टि की प्रतीक्षा' : 'Awaiting Confirmation'}`
+                          : `${queuedItemsCount} ${isHindi ? 'कतार में' : 'In Queue'}`
+                        }
+                      </span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Individual Dishes List */}
+              <div className="space-y-2 pt-1 divide-y divide-stone-100">
+                {items.map((item) => {
+                  let status: 'READY' | 'COOKING' | 'QUEUED' | 'PENDING' = 'QUEUED';
+                  if (isPending) {
+                    status = 'PENDING';
+                  } else if (item.is_prepared || item.item_status === 'READY') {
+                    status = 'READY';
+                  } else if (item.item_status === 'COOKING') {
+                    status = 'COOKING';
+                  } else if (item.item_status === 'PENDING') {
+                    status = 'PENDING';
+                  } else {
+                    status = 'QUEUED';
+                  }
+
+                  return (
+                    <div 
+                      key={item.id} 
+                      className={`pt-2.5 first:pt-0 flex items-center justify-between gap-3 transition-all ${
+                        status === 'COOKING' ? 'p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-xs' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {/* Quantity Tag */}
+                        <span className="px-2 py-0.5 bg-stone-100 text-stone-900 font-black text-xs rounded-lg shrink-0">
+                          {item.quantity}×
+                        </span>
+
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-xs sm:text-sm text-stone-900 truncate">
+                            {translateFoodName(item.item_name, isHindi)}
+                          </h4>
+                          {item.notes && (
+                            <p className="text-[10px] text-amber-700 italic truncate font-medium">
+                              Note: {item.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Dish Status Pill */}
+                      <div className="shrink-0">
+                        {status === 'READY' && (
+                          <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[11px] font-black flex items-center gap-1 shadow-xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
+                            <span>{t.dish_status_ready}</span>
+                          </span>
+                        )}
+                        {status === 'COOKING' && (
+                          <span className="px-2.5 py-1 bg-amber-500 text-stone-950 border border-amber-400 rounded-full text-[11px] font-black flex items-center gap-1 shadow-xs animate-pulse">
+                            <Flame className="w-3.5 h-3.5 fill-stone-950 inline" />
+                            <span>{t.dish_status_cooking}</span>
+                          </span>
+                        )}
+                        {status === 'QUEUED' && (
+                          <span className="px-2.5 py-1 bg-stone-100 text-stone-600 border border-stone-200 rounded-full text-[11px] font-bold flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-stone-400 inline" />
+                            <span>{t.dish_status_queued}</span>
+                          </span>
+                        )}
+                        {status === 'PENDING' && (
+                          <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[11px] font-bold flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-amber-600 inline" />
+                            <span>{t.dish_status_pending}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* 3. Order Items Receipt & Live Cooked Status */}
         <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-stone-100">
@@ -465,7 +633,7 @@ function OrderTrackingContent() {
                       {item.quantity}×
                     </span>
                     <span className="font-bold text-stone-900">
-                      {item.item_name}
+                      {translateFoodName(item.item_name, isHindi)}
                     </span>
                     {/* Real-time cooked status badge */}
                     {item.is_prepared ? (
@@ -521,7 +689,7 @@ function OrderTrackingContent() {
                 <div key={item.id} className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-stone-900">
-                      {item.quantity}× {item.item_name}
+                      {item.quantity}× {translateFoodName(item.item_name, isHindi)}
                     </span>
                     {/* Star Rating for this item */}
                     <div className="flex items-center gap-1">
@@ -550,7 +718,7 @@ function OrderTrackingContent() {
                   {/* Remark input for this item */}
                   <input
                     type="text"
-                    placeholder={t.remark_for_dish.replace('{dish}', item.item_name)}
+                    placeholder={t.remark_for_dish.replace('{dish}', translateFoodName(item.item_name, isHindi))}
                     value={itemReviews[item.id]?.remark ?? item.remark ?? ''}
                     onChange={(e) => handleItemRemarkChange(item.id, e.target.value)}
                     className="w-full px-3 py-1.5 bg-white text-stone-900 text-xs rounded-xl border border-stone-200 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-amber-500"

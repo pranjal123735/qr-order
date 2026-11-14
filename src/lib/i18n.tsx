@@ -125,6 +125,12 @@ export interface Translations {
   cooked_and_ready: string;
   preparing_status: string;
   special_note_label: string;
+  live_dish_tracker_title: string;
+  live_dish_tracker_subtitle: string;
+  dish_status_ready: string;
+  dish_status_cooking: string;
+  dish_status_queued: string;
+  dish_status_pending: string;
   rate_dish_title: string;
   rate_dish_subtitle: string;
   remark_for_dish: string;
@@ -140,6 +146,32 @@ export interface Translations {
   btn_yes_cancel: string;
   cancelling_text: string;
   cancel_error_default: string;
+
+  // Bell & Assistance Call
+  btn_ring_bell: string;
+  bell_food_info: string;
+  call_staff_bell: string;
+  call_staff_desc: string;
+  call_reason_pay: string;
+  call_reason_food_info: string;
+  call_reason_feedback: string;
+  call_reason_doubt: string;
+  call_reason_water: string;
+  call_reason_general: string;
+  bell_rung_success: string;
+  bell_ringing: string;
+  dish_info_title: string;
+  ring_kitchen_for_dish: string;
+  dish_info_subtitle: string;
+  ask_prep_time: string;
+  ask_spice_level: string;
+  request_cutlery_sauce: string;
+  dish_inquiry_placeholder: string;
+  btn_send_dish_ring: string;
+  btn_close: string;
+  waiter_on_way: string;
+  staff_bell_alert: string;
+  mark_attended: string;
 
   each: string;
 }
@@ -266,6 +298,12 @@ export const translations: Record<Language, Translations> = {
     cooked_and_ready: 'Cooked & Ready',
     preparing_status: 'Preparing',
     special_note_label: 'Special Note: ',
+    live_dish_tracker_title: 'Live Dish Status',
+    live_dish_tracker_subtitle: 'Track each food item as it moves through the kitchen',
+    dish_status_ready: 'Cooked & Ready',
+    dish_status_cooking: 'Cooking on Stove',
+    dish_status_queued: 'In Kitchen Queue',
+    dish_status_pending: 'Awaiting Confirmation',
     rate_dish_title: 'Rate Each Dish & Add Remarks',
     rate_dish_subtitle: 'How did you enjoy each food item? Share your remarks!',
     remark_for_dish: 'Remark for {dish} (e.g. Delicious, crisp, flavorful)...',
@@ -281,6 +319,32 @@ export const translations: Record<Language, Translations> = {
     btn_yes_cancel: 'Yes, Cancel',
     cancelling_text: 'Cancelling...',
     cancel_error_default: 'Failed to cancel order. Please notify waitstaff.',
+
+    // Bell & Assistance Call
+    btn_ring_bell: 'Ring Bell',
+    bell_food_info: 'Ring for Food Info',
+    call_staff_bell: 'Call Staff / Waiter',
+    call_staff_desc: 'Ring the service bell to call staff to your table for bill, doubts, or assistance.',
+    call_reason_pay: 'Request Bill / Pay (UPI / Card / Cash)',
+    call_reason_food_info: 'Food Info / Cooking Update',
+    call_reason_feedback: 'Feedback / Speak to Manager',
+    call_reason_doubt: 'Doubt / Question about Order',
+    call_reason_water: 'Water Refill / Cutlery / Napkins',
+    call_reason_general: 'Call Waiter to Table',
+    bell_rung_success: '🛎️ Bell Rung! Staff has been notified for Table #{table}.',
+    bell_ringing: 'Ringing Bell...',
+    dish_info_title: 'Dish Details & Food Bell',
+    ring_kitchen_for_dish: 'Ring Kitchen for this Dish',
+    dish_info_subtitle: 'Inquire about preparation time, spices, or request extras from the chef.',
+    ask_prep_time: '⏱️ When will this dish be ready?',
+    ask_spice_level: '🌶️ Inquire spice level or ingredients',
+    request_cutlery_sauce: '🧂 Request extra cutlery or sauce',
+    dish_inquiry_placeholder: 'Optional message for the kitchen chef...',
+    btn_send_dish_ring: 'Ring Kitchen for this Food',
+    btn_close: 'Close',
+    waiter_on_way: 'Staff is attending to your table now.',
+    staff_bell_alert: 'Table Bell Alert',
+    mark_attended: 'Mark Attended',
 
     each: 'each'
   },
@@ -405,6 +469,12 @@ export const translations: Record<Language, Translations> = {
     cooked_and_ready: 'तैयार',
     preparing_status: 'तैयारी में',
     special_note_label: 'विशेष निर्देश: ',
+    live_dish_tracker_title: 'लाइव व्यंजन स्थिति',
+    live_dish_tracker_subtitle: 'किचन में प्रत्येक व्यंजन की लाइव तैयारी ट्रैक करें',
+    dish_status_ready: 'पक कर तैयार',
+    dish_status_cooking: 'चूल्हे पर पक रहा है',
+    dish_status_queued: 'रसोई कतार में',
+    dish_status_pending: 'पुष्टि की प्रतीक्षा',
     rate_dish_title: 'प्रत्येक व्यंजन को रेटिंग और टिप्पणी दें',
     rate_dish_subtitle: 'आपको खाना कैसा लगा? अपने विचार साझा करें!',
     remark_for_dish: '{dish} के लिए टिप्पणी (उदा. स्वादिष्ट, कुरकुरा, लाजवाब)...',
@@ -420,6 +490,32 @@ export const translations: Record<Language, Translations> = {
     btn_yes_cancel: 'हाँ, रद्द करें',
     cancelling_text: 'रद्द किया जा रहा है...',
     cancel_error_default: 'ऑर्डर रद्द करने में विफल। कृपया स्टाफ को बताएं।',
+
+    // Bell & Assistance Call
+    btn_ring_bell: 'घंटी बजाएं',
+    bell_food_info: 'व्यंजन की जानकारी हेतु घंटी बजाएं',
+    call_staff_bell: 'वेटर / स्टाफ को बुलाएं',
+    call_staff_desc: 'बिल, शंका या सहायता के लिए अपनी टेबल पर स्टाफ को बुलाने हेतु सर्विस घंटी बजाएं।',
+    call_reason_pay: 'बिल मंगवाएं / भुगतान (UPI / कार्ड / कैश)',
+    call_reason_food_info: 'भोजन की स्थिति / समय पूछें',
+    call_reason_feedback: 'फीडबैक / मैनेजर से बात',
+    call_reason_doubt: 'ऑर्डर या भोजन से जुड़ा कोई सवाल',
+    call_reason_water: 'पानी / अतिरिक्त चम्मच / नैपकिन',
+    call_reason_general: 'टेबल पर वेटर को बुलाएं',
+    bell_rung_success: '🛎️ घंटी बजा दी गई है! टेबल #{table} के लिए स्टाफ को अलर्ट भेजा गया है।',
+    bell_ringing: 'घंटी बजाई जा रही है...',
+    dish_info_title: 'व्यंजन की जानकारी और किचन बेल',
+    ring_kitchen_for_dish: 'इस व्यंजन के लिए किचन को रिंग करें',
+    dish_info_subtitle: 'तैयारी का समय, मसाले या अतिरिक्त सामग्री के लिए शेफ को सूचित करें।',
+    ask_prep_time: '⏱️ यह व्यंजन कब तक तैयार होगा?',
+    ask_spice_level: '🌶️ तीखापन व सामग्री के बारे में पूछें',
+    request_cutlery_sauce: '🧂 अतिरिक्त चम्मच या चटनी मंगवाएं',
+    dish_inquiry_placeholder: 'किचन शेफ के लिए अतिरिक्त संदेश...',
+    btn_send_dish_ring: 'इस भोजन के लिए किचन को रिंग करें',
+    btn_close: 'बंद करें',
+    waiter_on_way: 'स्टाफ आपकी टेबल की ओर आ रहा है।',
+    staff_bell_alert: 'टेबल सर्विस घंटी अलर्ट',
+    mark_attended: 'अटेंड किया गया',
 
     each: 'प्रत्येक'
   }

@@ -5,7 +5,8 @@ import {
   MenuItem, 
   Order, 
   OrderItem, 
-  OrderStatus 
+  OrderStatus,
+  ServiceCall 
 } from '@/types/database';
 import { 
   INITIAL_RESTAURANT, 
@@ -509,12 +510,32 @@ export const DataStore = {
     const updated = orders.map(o => {
       if (o.id !== orderId) return o;
       const updatedItems = o.items?.map(it => 
-        it.id === itemId ? { ...it, is_prepared: isPrepared } : it
+        it.id === itemId 
+          ? { ...it, is_prepared: isPrepared, item_status: (isPrepared ? 'READY' : 'COOKING') as import('@/types/database').ItemPrepStatus } 
+          : it
       );
       return { ...o, items: updatedItems, updated_at: new Date().toISOString() };
     });
     setStored('orders', updated);
     localSync.emit('ORDER_UPDATED', { orderId, itemId, isPrepared });
+    return true;
+  },
+
+  // 9b-2. Set precise dish status: 'PENDING' | 'QUEUED' | 'COOKING' | 'READY'
+  async updateOrderItemStatus(orderId: string, itemId: string, status: import('@/types/database').ItemPrepStatus): Promise<boolean> {
+    const isPrepared = status === 'READY';
+    const orders = getStored<Order[]>('orders', INITIAL_ORDERS);
+    const updated = orders.map(o => {
+      if (o.id !== orderId) return o;
+      const updatedItems = o.items?.map(it => 
+        it.id === itemId 
+          ? { ...it, item_status: status, is_prepared: isPrepared } 
+          : it
+      );
+      return { ...o, items: updatedItems, updated_at: new Date().toISOString() };
+    });
+    setStored('orders', updated);
+    localSync.emit('ORDER_UPDATED', { orderId, itemId, itemStatus: status, isPrepared });
     return true;
   },
 
@@ -632,5 +653,105 @@ export const DataStore = {
         onUpdate();
       }
     });
+  },
+
+  // 11. Service Calls & Table Bell Rings
+  async createServiceCall(data: {
+    restaurant_id: string;
+    table_number: number;
+    type: import('@/types/database').ServiceCallType;
+    order_id?: string;
+    item_name?: string;
+    item_id?: string;
+    notes?: string;
+  }): Promise<ServiceCall> {
+    const newCall: ServiceCall = {
+      id: 'call-' + Math.random().toString(36).substring(2, 9),
+      restaurant_id: data.restaurant_id,
+      table_number: data.table_number,
+      order_id: data.order_id,
+      type: data.type,
+      item_name: data.item_name,
+      item_id: data.item_id,
+      notes: data.notes,
+      status: 'PENDING',
+      created_at: new Date().toISOString(),
+    };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('service_calls').insert(newCall);
+      } catch (err) {
+        console.warn('Supabase service_calls insert skipped/failed:', err);
+      }
+    }
+
+    const calls = getStored<ServiceCall[]>('service_calls', []);
+    const updated = [newCall, ...calls];
+    setStored('service_calls', updated);
+    localSync.emit('NEW_SERVICE_CALL', newCall);
+    return newCall;
+  },
+
+  async getServiceCalls(restaurantId: string): Promise<ServiceCall[]> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('service_calls')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .order('created_at', { ascending: false });
+        if (!error && data) return data as ServiceCall[];
+      } catch {
+        // fallback
+      }
+    }
+    const calls = getStored<ServiceCall[]>('service_calls', []);
+    return calls.filter(c => c.restaurant_id === restaurantId);
+  },
+
+  async resolveServiceCall(callId: string): Promise<boolean> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('service_calls')
+          .update({ status: 'RESOLVED' })
+          .eq('id', callId);
+      } catch {
+        // fallback
+      }
+    }
+    const calls = getStored<ServiceCall[]>('service_calls', []);
+    const updated = calls.map(c => c.id === callId ? { ...c, status: 'RESOLVED' as const } : c);
+    setStored('service_calls', updated);
+    localSync.emit('SERVICE_CALL_RESOLVED', { callId });
+    return true;
+  },
+
+  subscribeToServiceCalls(restaurantIdOrSlug: string, onUpdate: (payload?: unknown) => void) {
+    const unsubLocal = localSync.subscribe((event) => {
+      if (['NEW_SERVICE_CALL', 'SERVICE_CALL_RESOLVED'].includes(event.type)) {
+        onUpdate(event.payload);
+      }
+    });
+
+    if (isSupabaseConfigured && supabase) {
+      const client = supabase;
+      const channel = client
+        .channel(`public:service_calls:${restaurantIdOrSlug}:${Math.random().toString(36).substring(2, 7)}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'service_calls' },
+          () => onUpdate()
+        )
+        .subscribe();
+
+      return () => {
+        unsubLocal();
+        client.removeChannel(channel);
+      };
+    }
+
+    return unsubLocal;
   },
 };

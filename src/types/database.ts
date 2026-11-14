@@ -51,6 +51,8 @@ export interface MenuItem {
   created_at?: string;
 }
 
+export type ItemPrepStatus = 'PENDING' | 'QUEUED' | 'COOKING' | 'READY';
+
 export interface OrderItem {
   id: string;
   order_id: string;
@@ -60,6 +62,7 @@ export interface OrderItem {
   quantity: number;
   notes?: string;
   is_prepared?: boolean;
+  item_status?: ItemPrepStatus;
   rating?: number;
   remark?: string;
 }
@@ -99,4 +102,25 @@ export interface CartItem {
   menuItem: MenuItem;
   quantity: number;
   notes?: string;
+}
+
+export type ServiceCallType = 
+  | 'BILL' 
+  | 'FOOD_INFO' 
+  | 'FEEDBACK' 
+  | 'DOUBT' 
+  | 'WATER' 
+  | 'WAITER';
+
+export interface ServiceCall {
+  id: string;
+  restaurant_id: string;
+  table_number: number;
+  order_id?: string;
+  type: ServiceCallType;
+  item_name?: string;
+  item_id?: string;
+  notes?: string;
+  status: 'PENDING' | 'RESOLVED';
+  created_at: string;
 }

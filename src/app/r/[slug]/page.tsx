@@ -25,6 +25,7 @@ import {
   Check
 } from 'lucide-react';
 import { useLanguage, LanguageSwitcher } from '@/lib/i18n';
+import { translateFoodName, translateFoodDescription, translateCategoryName } from '@/lib/foodTranslations';
 
 function CustomerMenuContent() {
   const router = useRouter();
@@ -173,7 +174,10 @@ function CustomerMenuContent() {
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        return item.name.toLowerCase().includes(q) || item.description?.toLowerCase().includes(q);
+        const hindiName = translateFoodName(item.name, true).toLowerCase();
+        return item.name.toLowerCase().includes(q) || 
+               hindiName.includes(q) || 
+               item.description?.toLowerCase().includes(q);
       }
       return true;
     });
@@ -358,7 +362,7 @@ function CustomerMenuContent() {
                   : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
               }`}
             >
-              {cat.name}
+              {translateCategoryName(cat.name, isHindi)}
             </button>
           ))}
         </div>
@@ -410,7 +414,7 @@ function CustomerMenuContent() {
 
                   {/* Title & Price */}
                   <h3 className="font-extrabold text-sm sm:text-base text-stone-900 leading-tight">
-                    {item.name}
+                    {translateFoodName(item.name, isHindi)}
                   </h3>
                   <div className="font-black text-sm text-stone-950 mt-1">
                     {currency}{item.price % 1 === 0 ? item.price.toFixed(0) : item.price.toFixed(2)}
@@ -419,7 +423,7 @@ function CustomerMenuContent() {
                   {/* Description */}
                   {item.description && (
                     <p className="text-[11px] text-stone-500 line-clamp-2 mt-1 leading-relaxed">
-                      {item.description}
+                      {translateFoodDescription(item.description, isHindi)}
                     </p>
                   )}
                 </div>
@@ -539,7 +543,7 @@ function CustomerMenuContent() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-black text-sm text-stone-900">
-                        {item.menuItem.name}
+                        {translateFoodName(item.menuItem.name, isHindi)}
                       </h4>
                       <p className="text-xs text-stone-500 font-bold">
                         {currency}{item.menuItem.price % 1 === 0 ? item.menuItem.price.toFixed(0) : item.menuItem.price.toFixed(2)} {t.each}
