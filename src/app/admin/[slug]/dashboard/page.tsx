@@ -73,30 +73,30 @@ function DashboardContent() {
 
   return (
     <AdminAuthGuard slug={slug}>
-      <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col select-none selection:bg-amber-500 selection:text-stone-950">
+      <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col select-none selection:bg-amber-500 selection:text-stone-950 overflow-x-hidden w-full">
       {/* 1. Dashboard Top Navbar */}
-      <header className="bg-stone-900 border-b border-stone-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20">
-            <Building2 className="w-6 h-6" />
+      <header className="bg-stone-900 border-b border-stone-800 px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 shrink-0">
+            <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-black text-lg text-white">
+              <h1 className="font-black text-base sm:text-lg text-white truncate">
                 {restaurant?.name || slug}
               </h1>
-              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded-full border border-amber-500/30">
+              <span className="hidden xs:inline-block px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded-full border border-amber-500/30 whitespace-nowrap">
                 Tenant Portal
               </span>
             </div>
-            <p className="text-xs text-stone-400 font-mono">
+            <p className="text-xs text-stone-400 font-mono truncate">
               /r/{slug}
             </p>
           </div>
         </div>
 
         {/* User Account Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="hidden sm:block text-right">
             <p className="text-xs font-bold text-stone-200">
               {owner?.email || 'Authenticated Owner'}
@@ -106,7 +106,7 @@ function DashboardContent() {
 
           <button
             onClick={handleLogout}
-            className="px-3 py-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white border border-stone-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+            className="px-2.5 sm:px-3 py-1.5 bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white border border-stone-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
@@ -115,7 +115,7 @@ function DashboardContent() {
       </header>
 
       {/* 2. Main Content */}
-      <main className="flex-1 p-6 max-w-6xl mx-auto w-full space-y-6">
+      <main className="flex-1 p-4 sm:p-6 max-w-6xl mx-auto w-full space-y-6">
         {/* Banner with Customer Link */}
         <div className="bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950/40 border border-stone-800 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
           <div className="space-y-2 max-w-xl">
