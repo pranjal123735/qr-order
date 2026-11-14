@@ -302,23 +302,23 @@ function MenuManagerContent() {
       </div>
 
       {/* 4. Menu Items Grid */}
-      <main className="flex-1 p-6 max-w-6xl mx-auto w-full space-y-5">
+      <main className="flex-1 p-4 sm:p-6 max-w-6xl mx-auto w-full space-y-4 sm:space-y-5">
         {/* Instant AI Menu Scanner Banner */}
         <div className="bg-gradient-to-r from-amber-950/30 via-stone-900 to-stone-900 border border-amber-500/30 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0 font-black">
-              <Camera className="w-6 h-6 text-amber-400" />
+          <div className="flex items-start sm:items-center gap-3 sm:gap-3.5 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 font-black mt-0.5 sm:mt-0">
+              <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-black text-white">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm sm:text-base font-black text-white leading-tight">
                   Add Dishes Effortlessly with AI Photo Scan
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase whitespace-nowrap shrink-0">
                   Zero Manual Typing
                 </span>
               </div>
-              <p className="text-xs text-stone-400 mt-0.5 leading-relaxed">
+              <p className="text-xs text-stone-400 leading-relaxed">
                 Click or upload a photo of your paper menu card. Our AI detects dishes, prices, categories & automatically fetches delicious photos from the web!
               </p>
             </div>
@@ -326,7 +326,7 @@ function MenuManagerContent() {
 
           <button
             onClick={() => setIsScannerOpen(true)}
-            className="w-full sm:w-auto px-5 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs rounded-2xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 flex-shrink-0 active:scale-95"
+            className="w-full sm:w-auto px-5 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs rounded-2xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 shrink-0 active:scale-95"
           >
             <Sparkles className="w-4 h-4 stroke-[2.5]" />
             <span>Scan Menu Card Now</span>
@@ -418,24 +418,24 @@ function MenuManagerContent() {
                   </div>
 
                   {/* Bottom Stock Toggle Strip */}
-                  <div className="pt-3 border-t border-stone-800/80 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-stone-400">Kitchen Availability:</span>
+                  <div className="pt-3 border-t border-stone-800/80 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-stone-400">Stock:</span>
                       <span
-                        className={`text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        className={`text-[11px] sm:text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shrink-0 ${
                           isAvailable
                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                             : 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse'
                         }`}
                       >
-                        {isAvailable ? 'IN STOCK (Available)' : 'SOLD OUT (Hidden)'}
+                        {isAvailable ? 'IN STOCK' : 'SOLD OUT'}
                       </span>
                     </div>
 
                     {/* Giant Tactile Toggle Button */}
                     <button
                       onClick={() => handleToggleAvailability(item.id, isAvailable)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black shadow-md transition active:scale-95 flex items-center gap-1.5 ${
+                      className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-black shadow-md transition active:scale-95 flex items-center gap-1.5 shrink-0 ${
                         isAvailable
                           ? 'bg-rose-950/80 hover:bg-rose-900 border border-rose-700 text-rose-300'
                           : 'bg-emerald-600 hover:bg-emerald-500 text-white'

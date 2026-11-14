@@ -221,9 +221,9 @@ export function MenuScannerModal({
               <Sparkles className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black text-white">AI Menu Photo Scanner</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h2 className="text-base sm:text-lg font-black text-white">AI Menu Photo Scanner</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase whitespace-nowrap shrink-0">
                   Auto-Detect + Web Photos
                 </span>
               </div>
