@@ -275,7 +275,7 @@ function MenuManagerContent() {
       </div>
 
       {/* 3. Category Filter Navigation Bar */}
-      <div className="bg-stone-900/60 border-b border-stone-800/60 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center gap-2 custom-scrollbar">
+      <div className="bg-stone-900/60 border-b border-stone-800/60 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center gap-2 no-scrollbar overflow-x-auto">
         <button
           onClick={() => setSelectedCategory('ALL')}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
@@ -310,11 +310,11 @@ function MenuManagerContent() {
               <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
             </div>
             <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm sm:text-base font-black text-white leading-tight">
                   Add Dishes Effortlessly with AI Photo Scan
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase whitespace-nowrap shrink-0">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase whitespace-nowrap shrink-0">
                   Zero Manual Typing
                 </span>
               </div>

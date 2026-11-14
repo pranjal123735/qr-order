@@ -217,7 +217,7 @@ function KitchenLiveOrdersContent() {
 
       {/* 2. Status Metric Tabs */}
       <div className="bg-neutral-900/80 border-b border-neutral-800 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-3 overflow-hidden">
-        <div className="flex items-center gap-1.5 sm:gap-2 custom-scrollbar pb-1 w-full overflow-x-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 no-scrollbar w-full overflow-x-auto">
           <button
             onClick={() => setActiveTab('ALL')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Camera, 
   Upload, 
@@ -19,7 +19,8 @@ import {
   RefreshCw,
   Search,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Key
 } from 'lucide-react';
 import { SAMPLE_MENU_PRESETS, ScannedMenuItem, inferDietaryType } from '@/lib/menuScanner';
 import { getFoodPhotoForDish, getFoodPhotoOptions, FoodPhotoResult } from '@/lib/foodImageSearch';
@@ -50,6 +51,26 @@ export function MenuScannerModal({
   const [isReviewing, setIsReviewing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [geminiApiKey, setGeminiApiKey] = useState<string>('');
+  const [showKeyInput, setShowKeyInput] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gemini_api_key') || '';
+      if (saved) setGeminiApiKey(saved);
+    }
+  }, []);
+
+  const handleSaveGeminiKey = (key: string) => {
+    setGeminiApiKey(key);
+    if (typeof window !== 'undefined') {
+      if (key.trim()) {
+        localStorage.setItem('gemini_api_key', key.trim());
+      } else {
+        localStorage.removeItem('gemini_api_key');
+      }
+    }
+  };
 
   // Photo Picker Modal for individual item
   const [photoPickerItem, setPhotoPickerItem] = useState<ScannedMenuItem | null>(null);
@@ -96,6 +117,7 @@ export function MenuScannerModal({
           imageBase64: params.imageBase64,
           rawText: params.text,
           currency: restaurant.currency || '₹',
+          clientApiKey: geminiApiKey.trim() || undefined,
         }),
       });
 
@@ -285,6 +307,67 @@ export function MenuScannerModal({
                   <FileText className="w-3.5 h-3.5" />
                   <span>Paste Text</span>
                 </button>
+              </div>
+
+              {/* Free AI Engine Configuration & Status */}
+              <div className="max-w-xl mx-auto bg-stone-950/80 border border-stone-800/90 rounded-2xl p-3 sm:p-3.5 text-xs space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="font-bold text-stone-300">Vision Engine:</span>
+                    {geminiApiKey.trim() ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        Google Gemini 1.5 Flash (Active)
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        Free Server OCR Engine (Active)
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowKeyInput(!showKeyInput)}
+                    className="text-stone-400 hover:text-amber-400 font-bold transition text-[11px] underline"
+                  >
+                    {showKeyInput ? 'Close Settings' : geminiApiKey.trim() ? 'Change Key' : 'Add Free Gemini Key'}
+                  </button>
+                </div>
+
+                {showKeyInput && (
+                  <div className="pt-2 border-t border-stone-800/80 space-y-2 text-[11px]">
+                    <p className="text-stone-400 leading-relaxed">
+                      Google offers a <strong>100% free Gemini API tier</strong> (15 requests/minute, no credit card required) at{' '}
+                      <a
+                        href="https://aistudio.google.com/app/apikey"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-amber-400 hover:underline font-bold"
+                      >
+                        aistudio.google.com ↗
+                      </a>
+                      . Paste it below to enable Gemini Vision, or leave it blank to use the built-in free local OCR engine with zero setup!
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="password"
+                        value={geminiApiKey}
+                        onChange={(e) => handleSaveGeminiKey(e.target.value)}
+                        placeholder="Paste AI Studio Key (AIzaSy...)"
+                        className="flex-1 bg-stone-900 border border-stone-750 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-500 font-mono"
+                      />
+                      {geminiApiKey && (
+                        <button
+                          type="button"
+                          onClick={() => handleSaveGeminiKey('')}
+                          className="px-2.5 py-1.5 bg-stone-850 hover:bg-stone-800 text-stone-400 hover:text-white rounded-xl text-xs font-bold"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* TAB 1: PHOTO UPLOAD & CAMERA */}

@@ -317,7 +317,7 @@ function CustomerMenuContent() {
         </div>
 
         {/* 3. Category Horizontal Pills (Food App Style) */}
-        <div className="max-w-lg mx-auto px-4 pb-2.5 flex items-center gap-1.5 custom-scrollbar">
+        <div className="max-w-lg mx-auto px-4 pb-2.5 flex items-center gap-1.5 no-scrollbar overflow-x-auto">
           <button
             onClick={() => setSelectedCategory('ALL')}
             className={`px-3.5 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition active:scale-95 ${
