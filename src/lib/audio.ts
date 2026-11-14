@@ -74,16 +74,16 @@ class AudioManager {
     if (!('speechSynthesis' in window)) return;
 
     try {
-      // Resume if browser suspended speech
+      // Force cancel and resume to unstick any stalled speech in Chrome/Edge
+      window.speechSynthesis.cancel();
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
       }
-      window.speechSynthesis.cancel(); // Clear queued speech to prioritize latest call
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
       utterance.rate = 0.95; // Crisp, clear announcement pace
-      utterance.pitch = 1.05; // Friendly, audible tone
+      utterance.pitch = 1.0; // Natural tone
       utterance.volume = 1.0;
 
       // Pick matching voice if available
@@ -94,6 +94,10 @@ class AudioManager {
           utterance.voice = matchingVoice;
         }
       }
+
+      utterance.onerror = (e) => {
+        console.warn('SpeechSynthesis error:', e);
+      };
 
       window.speechSynthesis.speak(utterance);
     } catch (e) {

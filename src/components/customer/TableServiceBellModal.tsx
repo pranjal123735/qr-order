@@ -119,23 +119,8 @@ export function TableServiceBellModal({
     if (cooldownSeconds > 0) return;
     try {
       setIsSubmitting(true);
-      // Play desk bell chime and announce aloud what was selected
-      await audioManager.unlockAudio();
-      let announcement = `Service bell rung for Table ${tableNumber}.`;
-      if (selectedType === 'BILL') {
-        announcement = `Service bell rung for Table ${tableNumber}: Requesting bill and payment.`;
-      } else if (selectedType === 'DOUBT') {
-        announcement = `Service bell rung for Table ${tableNumber}: Calling staff for doubt or question.`;
-      } else if (selectedType === 'FEEDBACK') {
-        announcement = `Service bell rung for Table ${tableNumber}: Feedback for manager.`;
-      } else if (selectedType === 'WATER') {
-        announcement = `Service bell rung for Table ${tableNumber}: Requesting water or cutlery.`;
-      } else if (selectedType === 'CLEAN') {
-        announcement = `Service bell rung for Table ${tableNumber}: Requesting table clean or napkins.`;
-      } else {
-        announcement = `Service bell rung for Table ${tableNumber}: Calling waiter to table.`;
-      }
-      audioManager.ringAndAnnounce(announcement);
+      // On customer mobile device: gentle confirmation chime only (never speak aloud in dining hall)
+      audioManager.playSuccessChime();
 
       // Start 60-second cooldown timer
       const cooldownUntil = Date.now() + 60000;

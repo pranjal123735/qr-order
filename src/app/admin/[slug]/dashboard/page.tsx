@@ -7,6 +7,7 @@ import { AuthService, OwnerUser } from '@/lib/auth';
 import { DataStore } from '@/lib/store';
 import { Restaurant } from '@/types/database';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
+import { ServiceBellNotificationDropdown } from '@/components/admin/ServiceBellNotificationDropdown';
 import { 
   Building2, 
   ChefHat, 
@@ -111,6 +112,8 @@ function DashboardContent() {
 
         {/* Header Action */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <ServiceBellNotificationDropdown slug={slug} />
+
           <Link
             href={`/r/${slug}?table=1`}
             target="_blank"

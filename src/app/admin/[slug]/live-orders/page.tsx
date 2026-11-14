@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Order, OrderStatus, Restaurant, ItemPrepStatus, ServiceCall, OrderItem } from '@/types/database';
 import { DataStore } from '@/lib/store';
@@ -34,7 +34,11 @@ import {
   CreditCard,
   HelpCircle,
   Droplets,
-  UserCheck
+  UserCheck,
+  Send,
+  History,
+  Sparkles,
+  Filter
 } from 'lucide-react';
 import { translateFoodName } from '@/lib/foodTranslations';
 
@@ -230,12 +234,85 @@ function getAnnouncementText(call: ServiceCall): string {
   if (call.type === 'WATER') {
     return `Table ${call.table_number}: Requesting water or cutlery.${call.notes ? ' ' + call.notes : ''}`;
   }
+  if (call.type === 'CLEAN') {
+    return `Table ${call.table_number}: Requesting table clean and napkins.${call.notes ? ' ' + call.notes : ''}`;
+  }
   return `Table ${call.table_number}: Calling waiter to table.${call.notes ? ' ' + call.notes : ''}`;
+}
+
+function getServiceCallDetails(call: ServiceCall) {
+  switch (call.type) {
+    case 'WATER':
+      return {
+        label: 'Water & Cutlery',
+        hindi: 'पानी एवं चम्मच',
+        icon: <Droplets className="w-4 h-4 text-cyan-400" />,
+        badgeClass: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+        cardBorder: 'border-cyan-500/40',
+        headerBg: 'from-cyan-950/40 to-neutral-900',
+      };
+    case 'BILL':
+      return {
+        label: 'Request Bill / Pay',
+        hindi: 'बिल मंगवाएं / भुगतान',
+        icon: <CreditCard className="w-4 h-4 text-emerald-400" />,
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        cardBorder: 'border-emerald-500/40',
+        headerBg: 'from-emerald-950/40 to-neutral-900',
+      };
+    case 'CLEAN':
+      return {
+        label: 'Clean Table / Cutlery',
+        hindi: 'टेबल सफाई व नैपकिन',
+        icon: <Utensils className="w-4 h-4 text-purple-400" />,
+        badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+        cardBorder: 'border-purple-500/40',
+        headerBg: 'from-purple-950/40 to-neutral-900',
+      };
+    case 'FOOD_INFO':
+      return {
+        label: `Food Info: ${call.item_name || 'Dish'}`,
+        hindi: `भोजन जानकारी: ${call.item_name || 'व्यंजन'}`,
+        icon: <ChefHat className="w-4 h-4 text-orange-400" />,
+        badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+        cardBorder: 'border-orange-500/40',
+        headerBg: 'from-orange-950/40 to-neutral-900',
+      };
+    case 'DOUBT':
+      return {
+        label: 'Question / Doubt',
+        hindi: 'शंका या सवाल',
+        icon: <HelpCircle className="w-4 h-4 text-blue-400" />,
+        badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+        cardBorder: 'border-blue-500/40',
+        headerBg: 'from-blue-950/40 to-neutral-900',
+      };
+    case 'FEEDBACK':
+      return {
+        label: 'Diner Feedback',
+        hindi: 'ग्राहक फीडबैक',
+        icon: <MessageSquare className="w-4 h-4 text-pink-400" />,
+        badgeClass: 'bg-pink-500/20 text-pink-300 border-pink-500/40',
+        cardBorder: 'border-pink-500/40',
+        headerBg: 'from-pink-950/40 to-neutral-900',
+      };
+    case 'WAITER':
+    default:
+      return {
+        label: 'Call Waiter',
+        hindi: 'वेटर को बुलाएं',
+        icon: <UserCheck className="w-4 h-4 text-amber-400" />,
+        badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        cardBorder: 'border-amber-500/40',
+        headerBg: 'from-amber-950/40 to-neutral-900',
+      };
+  }
 }
 
 function KitchenLiveOrdersContent() {
   const router = useRouter();
   const routeParams = useParams();
+  const searchParams = useSearchParams();
   const slug = (routeParams?.slug as string) || 'rustic-grill';
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -244,7 +321,7 @@ function KitchenLiveOrdersContent() {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [speechEnabled, setSpeechEnabled] = useState(true);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'COOKING' | 'ON_THE_WAY' | 'SERVED'>('ALL');
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'COOKING' | 'ON_THE_WAY' | 'SERVED' | 'BELLS'>('ALL');
   const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [nowTimestamp, setNowTimestamp] = useState<number>(Date.now());
@@ -254,16 +331,29 @@ function KitchenLiveOrdersContent() {
 
   // Live Table Service Bells & Calls state
   const [serviceCalls, setServiceCalls] = useState<ServiceCall[]>([]);
+  const [allServiceCalls, setAllServiceCalls] = useState<ServiceCall[]>([]);
+  const [bellFilter, setBellFilter] = useState<'ACTIVE' | 'RESOLVED' | 'ALL'>('ACTIVE');
+  const [bellTableFilter, setBellTableFilter] = useState<number | 'ALL'>('ALL');
+  const [customWaiterNames, setCustomWaiterNames] = useState<Record<string, string>>({});
   const prevCallsCountRef = useRef<number>(0);
   const knownCallIdsRef = useRef<Set<string>>(new Set());
+
+  // Set active tab if query param ?tab=BELLS was supplied
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'BELLS') {
+      setActiveTab('BELLS');
+    }
+  }, [searchParams]);
 
   // Confirmation modal and Undo / manual status picker state
   const [confirmDialog, setConfirmDialog] = useState<StatusChangeRequest | null>(null);
   const [statusPickerOrder, setStatusPickerOrder] = useState<Order | null>(null);
 
-  // Dish-level confirmation modal & status picker state
+  // Dish-level confirmation modal & dropdown state
   const [dishConfirmDialog, setDishConfirmDialog] = useState<DishStatusChangeRequest | null>(null);
   const [dishPicker, setDishPicker] = useState<DishPickerState | null>(null);
+  const [openDishDropdown, setOpenDishDropdown] = useState<{ orderId: string; dishId: string } | null>(null);
 
   // Anti-Abuse: Manager Snoozed Tables map (table_number -> expire timestamp)
   const [snoozedTables, setSnoozedTables] = useState<Record<number, number>>({});
@@ -328,82 +418,117 @@ function KitchenLiveOrdersContent() {
   }, []);
 
   const prevOrderCountRef = useRef<number>(0);
+  const isInitialMountRef = useRef<boolean>(true);
+  const isFetchingRef = useRef<boolean>(false);
 
-  const fetchOrders = async (shouldChime = false) => {
-    const res = await DataStore.getRestaurant(slug);
-    if (res) {
-      setRestaurant(res);
-      const [allOrders, calls] = await Promise.all([
-        DataStore.getOrders(res.id),
-        DataStore.getServiceCalls(res.id),
-      ]);
+  const fetchOrders = async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    try {
+      const res = await DataStore.getRestaurant(slug);
+      if (res) {
+        setRestaurant(res);
+        const [allOrders, calls] = await Promise.all([
+          DataStore.getOrders(res.id),
+          DataStore.getServiceCalls(res.id),
+        ]);
 
-      const pendingCalls = calls.filter(c => c.status === 'PENDING');
-      const newCalls = pendingCalls.filter(c => !knownCallIdsRef.current.has(c.id));
+        const pendingCalls = calls.filter(c => c.status === 'PENDING');
 
-      if (shouldChime && audioEnabled) {
-        // Filter out snoozed tables from voice announcements and bell rings
-        const eligibleCalls = newCalls.filter(c => !isTableSnoozed(c.table_number));
-        if (eligibleCalls.length > 0) {
-          // Play desk bell AND speak the latest service call announcement
-          const latestCall = eligibleCalls[0];
-          const speakText = getAnnouncementText(latestCall);
-          if (speechEnabled) {
-            audioManager.ringAndAnnounce(speakText);
-          } else {
-            audioManager.playServiceBell();
+        // On initial component mount: populate known call IDs without playing sound
+        if (isInitialMountRef.current) {
+          pendingCalls.forEach(c => knownCallIdsRef.current.add(c.id));
+          prevOrderCountRef.current = allOrders.length;
+          prevCallsCountRef.current = pendingCalls.length;
+          isInitialMountRef.current = false;
+        } else {
+          // On all subsequent polls/updates: detect brand new calls
+          const newCalls = pendingCalls.filter(c => !knownCallIdsRef.current.has(c.id));
+
+          if (newCalls.length > 0) {
+            // Immediately mark as known so subsequent quick polls do not duplicate audio
+            newCalls.forEach(c => knownCallIdsRef.current.add(c.id));
+
+            // Filter out snoozed tables
+            const eligibleCalls = newCalls.filter(c => !isTableSnoozed(c.table_number));
+            if (eligibleCalls.length > 0 && audioEnabled) {
+              const latestCall = eligibleCalls[0];
+              const speakText = getAnnouncementText(latestCall);
+              if (speechEnabled) {
+                audioManager.ringAndAnnounce(speakText);
+              } else {
+                audioManager.playServiceBell();
+              }
+            }
+          } else if (allOrders.length > prevOrderCountRef.current && audioEnabled) {
+            audioManager.playNewOrderChime();
           }
-        } else if (allOrders.length > prevOrderCountRef.current) {
-          audioManager.playNewOrderChime();
         }
-      }
 
-      // Mark calls as known
-      pendingCalls.forEach(c => knownCallIdsRef.current.add(c.id));
+        // Keep all pending calls tracked
+        pendingCalls.forEach(c => knownCallIdsRef.current.add(c.id));
 
-      prevOrderCountRef.current = allOrders.length;
-      prevCallsCountRef.current = pendingCalls.length;
-      setServiceCalls(pendingCalls);
+        prevOrderCountRef.current = allOrders.length;
+        prevCallsCountRef.current = pendingCalls.length;
+        setServiceCalls(pendingCalls);
+        setAllServiceCalls(calls);
 
-      // sync prepared dishes map
-      const initialChecked: Record<string, boolean> = {};
-      allOrders.forEach(o => {
-        o.items?.forEach(it => {
-          if (it.is_prepared) {
-            initialChecked[it.id] = true;
-          }
+        // sync prepared dishes map
+        const initialChecked: Record<string, boolean> = {};
+        allOrders.forEach(o => {
+          o.items?.forEach(it => {
+            if (it.is_prepared) {
+              initialChecked[it.id] = true;
+            }
+          });
         });
-      });
-      setCheckedDishIds(prev => ({ ...initialChecked, ...prev }));
+        setCheckedDishIds(prev => ({ ...initialChecked, ...prev }));
 
-      setOrders(allOrders);
+        setOrders(allOrders);
+      }
+    } catch (err) {
+      console.warn('Failed to sync live orders / calls:', err);
+    } finally {
+      isFetchingRef.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    fetchOrders(false);
+    // 1. Initial fetch on mount
+    fetchOrders();
 
+    // 2. Realtime WebSocket / Broadcast sync
     const unsubOrders = DataStore.subscribeToOrders(slug, () => {
-      fetchOrders(true);
+      fetchOrders();
     });
 
     const unsubCalls = DataStore.subscribeToServiceCalls(slug, () => {
-      fetchOrders(true);
+      fetchOrders();
     });
 
-    const interval = setInterval(() => fetchOrders(false), 8000);
+    // 3. Ultra-reliable 3-second heartbeat polling (Mobile -> Server -> Laptop sync)
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 3000);
 
     return () => {
       unsubOrders();
       unsubCalls();
       clearInterval(interval);
     };
-  }, [slug, audioEnabled]);
+  }, [slug, audioEnabled, speechEnabled]);
 
-  const handleResolveCall = async (callId: string) => {
-    await DataStore.resolveServiceCall(callId);
+  const handleResolveCall = async (callId: string, waiterName?: string) => {
+    await DataStore.resolveServiceCall(callId, waiterName);
+    audioManager.playSuccessChime();
     setServiceCalls(prev => prev.filter(c => c.id !== callId));
+    setAllServiceCalls(prev => prev.map(c => c.id === callId ? { 
+      ...c, 
+      status: 'RESOLVED', 
+      resolved_at: new Date().toISOString(),
+      waiter_name: waiterName || c.waiter_name 
+    } : c));
   };
 
   const toggleAudio = () => {
@@ -422,7 +547,7 @@ function KitchenLiveOrdersContent() {
       [dishId]: newVal,
     }));
     await DataStore.updateOrderItemStatus(orderId, dishId, newVal ? 'READY' : 'COOKING');
-    fetchOrders(false);
+    fetchOrders();
   };
 
   const cycleDishStatus = async (orderId: string, dishId: string, currentStatus?: ItemPrepStatus, isPrepared?: boolean) => {
@@ -437,7 +562,7 @@ function KitchenLiveOrdersContent() {
     }
     setCheckedDishIds(prev => ({ ...prev, [dishId]: nextStatus === 'READY' }));
     await DataStore.updateOrderItemStatus(orderId, dishId, nextStatus);
-    fetchOrders(false);
+    fetchOrders();
   };
 
   const promptDishStatusChange = (
@@ -471,7 +596,7 @@ function KitchenLiveOrdersContent() {
     } else if (newStatus === 'REJECTED') {
       audioManager.playCancelTone();
     }
-    await fetchOrders(false);
+    await fetchOrders();
   };
 
   const promptStatusChange = (order: Order, newStatus: OrderStatus, actionTitle?: string) => {
@@ -595,10 +720,15 @@ function KitchenLiveOrdersContent() {
           {/* Action Controls */}
           <div className="flex items-center gap-2 shrink-0">
             {serviceCalls.length > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-neutral-950 rounded-xl text-xs font-black shadow-lg animate-bounce">
+              <button
+                type="button"
+                onClick={() => setActiveTab('BELLS')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-neutral-950 rounded-xl text-xs font-black shadow-lg transition active:scale-95 animate-bounce"
+                title="Open Table Service Bell Dispatch Center"
+              >
                 <BellRing className="w-4 h-4 stroke-[2.5]" />
                 <span>{serviceCalls.length} Bell Call{serviceCalls.length > 1 ? 's' : ''}</span>
-              </div>
+              </button>
             )}
 
             <button
@@ -644,6 +774,20 @@ function KitchenLiveOrdersContent() {
             </button>
 
             <button
+              type="button"
+              onClick={async () => {
+                await audioManager.unlockAudio();
+                setAudioUnlocked(true);
+                audioManager.ringAndAnnounce('Test chime successful. Table 4 requesting bill and payment.');
+              }}
+              className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-750 text-stone-200 border border-neutral-700 transition active:scale-95 shadow-xs"
+              title="Test Kitchen Bell chime and Voice announcement"
+            >
+              <Bell className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden md:inline">Test Sound 🔔</span>
+            </button>
+
+            <button
               onClick={() => router.push(`/admin/${slug}/menu`)}
               className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-neutral-850 hover:bg-neutral-800 text-stone-200 border border-neutral-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
             >
@@ -652,7 +796,7 @@ function KitchenLiveOrdersContent() {
             </button>
 
             <button
-              onClick={() => fetchOrders(false)}
+              onClick={() => fetchOrders()}
               className="p-1.5 sm:p-2 bg-neutral-850 hover:bg-neutral-800 text-stone-300 border border-neutral-700 rounded-xl transition"
               title="Refresh Orders"
             >
@@ -742,6 +886,26 @@ function KitchenLiveOrdersContent() {
                 {servedOrders.length}
               </span>
             </button>
+
+            {/* Dedicated Service Bells Tracker Tab */}
+            <button
+              onClick={() => setActiveTab('BELLS')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'BELLS'
+                  ? 'bg-amber-500 text-neutral-950 font-black shadow-sm ring-2 ring-amber-400'
+                  : serviceCalls.length > 0
+                  ? 'bg-amber-950/50 border border-amber-500/60 text-amber-300 hover:bg-amber-900/50'
+                  : 'bg-neutral-800 text-stone-300 hover:bg-neutral-750'
+              }`}
+            >
+              <BellRing className={`w-3.5 h-3.5 shrink-0 ${serviceCalls.length > 0 ? 'text-amber-400 animate-bounce' : 'text-stone-400'}`} />
+              <span>Service Bells</span>
+              <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+                serviceCalls.length > 0 ? 'bg-amber-500 text-neutral-950' : 'bg-neutral-950/40 text-stone-400'
+              }`}>
+                {serviceCalls.length}
+              </span>
+            </button>
           </div>
 
           <span className="hidden lg:inline text-xs text-stone-400 font-medium shrink-0">
@@ -750,185 +914,598 @@ function KitchenLiveOrdersContent() {
         </div>
       </div>
 
-      {/* 3. Redesigned Ticket Cards Grid */}
-      <main className="flex-1 p-6 pt-32 sm:pt-28 max-w-7xl mx-auto w-full">
-        {/* Live Table Service Bells Alert Section */}
-        {serviceCalls.length > 0 && (
-          <div className="mb-6 bg-gradient-to-r from-amber-950/40 via-neutral-900 to-amber-950/30 border border-amber-500/50 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-xs">
-                  <BellRing className="w-4 h-4 animate-bounce" />
+      {/* 3. Main Workspace Area */}
+      <main className="flex-1 p-4 sm:p-6 pt-32 sm:pt-28 max-w-7xl mx-auto w-full">
+        {/* VIEW A: DEDICATED TABLE SERVICE BELL TRACKER & WAITER DISPATCH CENTER */}
+        {activeTab === 'BELLS' ? (
+          <div className="space-y-6">
+            {/* Header Banner & Stats */}
+            <div className="bg-gradient-to-r from-amber-950/40 via-neutral-900 to-amber-950/20 border border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500 text-neutral-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 shrink-0">
+                    <BellRing className="w-6 h-6 animate-bounce" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                        Table Service Bells & Waiter Dispatch
+                      </h2>
+                      <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold rounded-full">
+                        टेबल सर्विस बेल ट्रैकर
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-400 mt-1">
+                      Real-time queue: track which table rang, what they need, and dispatch waiters in chronological FIFO order.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-sm sm:text-base text-amber-400 flex items-center gap-2">
-                    <span>Live Table Service Bells</span>
-                    <span className="px-2 py-0.5 bg-amber-500 text-stone-950 text-[10px] font-black rounded-full">
-                      {serviceCalls.length} Calling
+
+                {/* Quick Announce Action */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      audioManager.unlockAudio();
+                      setAudioUnlocked(true);
+                      const pendingSorted = [...serviceCalls].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                      if (pendingSorted.length > 0) {
+                        const topCall = pendingSorted[0];
+                        audioManager.ringAndAnnounce(`Priority 1 in queue: ${getAnnouncementText(topCall)}`);
+                      } else {
+                        audioManager.ringAndAnnounce('No service calls currently pending.');
+                      }
+                    }}
+                    className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-750 text-amber-300 font-bold text-xs rounded-xl border border-neutral-700 transition active:scale-95 flex items-center gap-2 shadow-sm"
+                  >
+                    <Volume2 className="w-4 h-4 text-amber-400" />
+                    <span>Announce #1 in Queue 🗣️</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fetchOrders()}
+                    className="p-2 bg-neutral-800 hover:bg-neutral-750 text-stone-300 rounded-xl border border-neutral-700 transition active:scale-95"
+                    title="Refresh Service Bells"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Real-time Summary Counters */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-neutral-800/80">
+                <div className="bg-neutral-950/70 p-3.5 rounded-2xl border border-neutral-800">
+                  <span className="text-[11px] font-semibold text-stone-400 block">Active Waiting Queue</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-2xl font-black text-amber-400">{serviceCalls.length}</span>
+                    {serviceCalls.length > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-neutral-950/70 p-3.5 rounded-2xl border border-neutral-800">
+                  <span className="text-[11px] font-semibold text-stone-400 block">Longest Wait Time</span>
+                  <div className="flex items-center gap-1.5 mt-1 font-mono">
+                    <Clock className="w-4 h-4 text-stone-400" />
+                    <span className={`text-xl font-black ${
+                      serviceCalls.length > 0 ? 'text-amber-400' : 'text-stone-500'
+                    }`}>
+                      {serviceCalls.length > 0
+                        ? formatElapsedTimer(
+                            [...serviceCalls].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0].created_at
+                          )
+                        : '00:00'}
                     </span>
-                  </h3>
-                  <p className="text-[11px] text-stone-400">
-                    Customers ringing bell for food info, bill/pay, feedback, or doubts
-                  </p>
+                  </div>
+                </div>
+
+                <div className="bg-neutral-950/70 p-3.5 rounded-2xl border border-neutral-800">
+                  <span className="text-[11px] font-semibold text-stone-400 block">Attended & Resolved</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="text-2xl font-black text-emerald-400">
+                      {allServiceCalls.filter(c => c.status === 'RESOLVED').length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-neutral-950/70 p-3.5 rounded-2xl border border-neutral-800">
+                  <span className="text-[11px] font-semibold text-stone-400 block">Total Requests Today</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Bell className="w-4 h-4 text-blue-400" />
+                    <span className="text-2xl font-black text-white">
+                      {allServiceCalls.length}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-              {serviceCalls.map((call) => {
-                let typeLabel = 'Call Waiter';
-                let icon = <UserCheck className="w-4 h-4 text-amber-400" />;
-                let typeBadge = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-
-                if (call.type === 'BILL') {
-                  typeLabel = 'Request Bill / Pay';
-                  icon = <CreditCard className="w-4 h-4 text-emerald-400" />;
-                  typeBadge = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-                } else if (call.type === 'FOOD_INFO') {
-                  typeLabel = `Food Info: ${call.item_name || 'Dish'}`;
-                  icon = <Utensils className="w-4 h-4 text-orange-400" />;
-                  typeBadge = 'bg-orange-500/20 text-orange-300 border-orange-500/30';
-                } else if (call.type === 'DOUBT') {
-                  typeLabel = 'Doubt / Inquiry';
-                  icon = <HelpCircle className="w-4 h-4 text-blue-400" />;
-                  typeBadge = 'bg-blue-500/20 text-blue-300 border-blue-500/30';
-                } else if (call.type === 'FEEDBACK') {
-                  typeLabel = 'Diner Feedback';
-                  icon = <MessageSquare className="w-4 h-4 text-purple-400" />;
-                  typeBadge = 'bg-purple-500/20 text-purple-300 border-purple-500/30';
-                } else if (call.type === 'WATER') {
-                  typeLabel = 'Water / Cutlery';
-                  icon = <Droplets className="w-4 h-4 text-cyan-400" />;
-                  typeBadge = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
-                }
-
-                return (
-                  <div
-                    key={call.id}
-                    className="bg-neutral-900 border border-amber-500/40 rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-md hover:border-amber-400 transition"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2 py-0.5 bg-amber-500 text-stone-950 font-black text-xs rounded-md">
-                            Table #{call.table_number}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 ${typeBadge}`}>
-                            {icon}
-                            <span>{typeLabel}</span>
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-stone-400 font-mono">
-                          {new Date(call.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-
-                      {call.notes && (
-                        <p className="text-xs text-stone-200 bg-neutral-950/80 p-2 rounded-lg border border-neutral-800 mt-2 font-medium">
-                          &ldquo;{call.notes}&rdquo;
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          audioManager.unlockAudio();
-                          setAudioUnlocked(true);
-                          audioManager.ringAndAnnounce(getAnnouncementText(call));
-                        }}
-                        className="py-2 px-3 bg-neutral-800 hover:bg-neutral-750 text-amber-400 font-bold text-xs rounded-lg border border-neutral-700 transition active:scale-95 flex items-center justify-center gap-1 shrink-0"
-                        title="Speak this table call aloud"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Speak</span>
-                      </button>
-
-                      {isTableSnoozed(call.table_number) ? (
-                        <button
-                          type="button"
-                          onClick={() => handleUnsnoozeTable(call.table_number)}
-                          className="py-2 px-2.5 bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border border-rose-500/40 font-bold text-xs rounded-lg transition active:scale-95 flex items-center gap-1 shrink-0"
-                          title="Unsnooze table audio alerts"
-                        >
-                          <BellOff className="w-3.5 h-3.5 text-rose-400" />
-                          <span>Unsnooze</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleSnoozeTable(call.table_number)}
-                          className="py-2 px-2.5 bg-neutral-800 hover:bg-neutral-750 text-stone-400 hover:text-stone-200 font-bold text-xs rounded-lg border border-neutral-700 transition active:scale-95 flex items-center gap-1 shrink-0"
-                          title={`Snooze audio alerts from Table #${call.table_number} for 5 minutes`}
-                        >
-                          <BellOff className="w-3.5 h-3.5 text-stone-400" />
-                          <span className="hidden sm:inline">Snooze (5m)</span>
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleResolveCall(call.id)}
-                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-sm transition active:scale-98 flex items-center justify-center gap-1.5 min-w-[120px]"
-                      >
-                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Mark Attended / Resolved</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="py-24 text-center text-stone-500">
-            <RefreshCw className="w-8 h-8 mx-auto animate-spin mb-3 text-amber-500" />
-            <p className="font-bold text-stone-300 text-sm">Syncing live kitchen orders...</p>
-          </div>
-        ) : displayedOrders.length === 0 ? (
-          <div className="py-24 text-center text-stone-500 max-w-md mx-auto">
-            <div className="w-16 h-16 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center mx-auto mb-3">
-              <ChefHat className="w-8 h-8 text-stone-500 opacity-60" />
-            </div>
-            <h3 className="text-lg font-bold text-white">No active orders right now</h3>
-            <p className="text-xs text-stone-400 mt-1">
-              When diners scan a table QR code and order, tickets will pop up here live.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {displayedOrders.map((order) => {
-              const isPending = order.status === 'PENDING';
-              const isCooking = order.status === 'CONFIRMED' || order.status === 'PREPARING';
-              const isOnTheWay = order.status === 'ON_THE_WAY' || order.status === 'READY';
-              const isServed = order.status === 'SERVED';
-              const isProcessing = processingOrderId === order.id;
-              const elapsedMins = getElapsedMinutes(order.created_at);
-
-              const isUrgent = elapsedMins >= 10;
-              const isWarning = elapsedMins >= 5 && elapsedMins < 10;
-
-              const totalItemsCount = order.items?.length || 0;
-              const preparedItemsCount = order.items?.filter(it => checkedDishIds[it.id] || it.is_prepared).length || 0;
-
-              return (
-                <div
-                  key={order.id}
-                  className={`bg-neutral-900 rounded-3xl border flex flex-col justify-between overflow-hidden shadow-xl transition-all duration-200 ${
-                    isPending
-                      ? 'border-amber-500/70 shadow-amber-500/5'
-                      : isOnTheWay
-                      ? 'border-orange-500/70 shadow-orange-500/10'
-                      : isCooking
-                      ? 'border-emerald-500/50 shadow-emerald-500/5'
-                      : 'border-neutral-800'
+            {/* Filter Tabs & Table Selector */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-900/80 p-3 rounded-2xl border border-neutral-800">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setBellFilter('ACTIVE')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    bellFilter === 'ACTIVE'
+                      ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                      : 'bg-neutral-800 text-stone-300 hover:bg-neutral-750'
                   }`}
                 >
+                  <Timer className="w-3.5 h-3.5" />
+                  <span>Active Queue</span>
+                  <span className="px-1.5 py-0.2 rounded-md bg-neutral-950/40 text-[10px]">
+                    {serviceCalls.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBellFilter('RESOLVED')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    bellFilter === 'RESOLVED'
+                      ? 'bg-emerald-500 text-neutral-950 font-black shadow-sm'
+                      : 'bg-neutral-800 text-stone-300 hover:bg-neutral-750'
+                  }`}
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Attended / Dispatched</span>
+                  <span className="px-1.5 py-0.2 rounded-md bg-neutral-950/40 text-[10px]">
+                    {allServiceCalls.filter(c => c.status === 'RESOLVED').length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBellFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    bellFilter === 'ALL'
+                      ? 'bg-stone-200 text-neutral-950 font-black shadow-sm'
+                      : 'bg-neutral-800 text-stone-300 hover:bg-neutral-750'
+                  }`}
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>All Calls</span>
+                  <span className="px-1.5 py-0.2 rounded-md bg-neutral-950/40 text-[10px]">
+                    {allServiceCalls.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Table Selector Dropdown */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-stone-400 font-bold flex items-center gap-1">
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>Table:</span>
+                </span>
+                <select
+                  value={bellTableFilter}
+                  onChange={(e) => setBellTableFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+                  className="px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded-xl text-xs font-bold text-amber-400 focus:outline-none focus:border-amber-500"
+                >
+                  <option value="ALL">All Tables</option>
+                  {Array.from(new Set(allServiceCalls.map(c => c.table_number))).sort((a, b) => a - b).map(t => (
+                    <option key={t} value={t}>Table #{t}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* BELL CARDS CONTAINER */}
+            {bellFilter === 'ACTIVE' && serviceCalls.length === 0 ? (
+              <div className="py-20 text-center bg-neutral-900/60 rounded-3xl border border-neutral-800/80 p-8 max-w-lg mx-auto space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-black text-white">All Tables Attended!</h3>
+                <p className="text-xs text-stone-400 max-w-sm mx-auto leading-relaxed">
+                  No tables are currently waiting for service. When diners ring their service bell on table QR codes, they will queue up here in chronological order.
+                </p>
+              </div>
+            ) : bellFilter === 'ACTIVE' ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-xs text-stone-400 px-1">
+                  <span className="font-bold">
+                    Chronological Queue ({serviceCalls.length} Waiting • Oldest at top):
+                  </span>
+                  <span className="text-amber-400 font-semibold">
+                    Send waiters following the sequence numbers below
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {[...serviceCalls]
+                    .filter(c => bellTableFilter === 'ALL' || c.table_number === bellTableFilter)
+                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                    .map((call, index) => {
+                      const isFirst = index === 0;
+                      const details = getServiceCallDetails(call);
+                      const diffSeconds = Math.max(0, Math.floor((nowTimestamp - new Date(call.created_at).getTime()) / 1000));
+                      const mins = Math.floor(diffSeconds / 60);
+                      const isUrgent = mins >= 4;
+                      const isWarning = mins >= 2 && mins < 4;
+
+                      return (
+                        <div
+                          key={call.id}
+                          className={`bg-neutral-900 rounded-3xl border transition-all duration-200 overflow-hidden shadow-xl ${
+                            isFirst
+                              ? 'border-amber-500 ring-2 ring-amber-500/30 shadow-amber-500/10'
+                              : isUrgent
+                              ? 'border-rose-500/80 shadow-rose-500/10'
+                              : 'border-neutral-800 hover:border-neutral-700'
+                          }`}
+                        >
+                          {/* Top Priority Ribbon for #1 in Queue */}
+                          {isFirst && (
+                            <div className="bg-gradient-to-r from-amber-500 via-orange-400 to-amber-500 text-neutral-950 font-black px-4 py-1.5 text-xs flex items-center justify-between shadow-sm">
+                              <div className="flex items-center gap-1.5">
+                                <Sparkles className="w-4 h-4 fill-neutral-950" />
+                                <span>#1 IN QUEUE • WAITING LONGEST (DISPATCH WAITER FIRST)</span>
+                              </div>
+                              <span className="text-[11px] font-mono font-black">
+                                Waiting: {formatElapsedTimer(call.created_at)}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="p-5 sm:p-6 space-y-4">
+                            {/* Card Header: Table + Rank + Reason + Elapsed Timer */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 flex-wrap">
+                                {/* Table Stand Badge */}
+                                <div className="px-4 py-2 bg-amber-500 text-neutral-950 font-black text-base sm:text-lg rounded-2xl tracking-tight shadow-md flex items-center gap-2">
+                                  <span>TABLE #{call.table_number}</span>
+                                </div>
+
+                                {/* Queue Rank Badge if not #1 */}
+                                {!isFirst && (
+                                  <span className="px-3 py-1 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-neutral-700">
+                                    #{index + 1} In Queue
+                                  </span>
+                                )}
+
+                                {/* Reason / Need Badge */}
+                                <span className={`px-3 py-1 rounded-xl border text-xs font-bold flex items-center gap-1.5 ${details.badgeClass}`}>
+                                  {details.icon}
+                                  <span>{details.label}</span>
+                                  <span className="opacity-75 font-normal">({details.hindi})</span>
+                                </span>
+                              </div>
+
+                              {/* Elapsed Waiting Timer */}
+                              <div className="flex items-center gap-2 shrink-0">
+                                <div className={`px-3 py-1 rounded-xl font-mono text-xs font-bold flex items-center gap-1.5 border ${
+                                  isUrgent
+                                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse font-black'
+                                    : isWarning
+                                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                                    : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                }`}>
+                                  <Clock className="w-3.5 h-3.5" />
+                                  <span>{formatElapsedTimer(call.created_at)} waiting</span>
+                                  {isUrgent && <span className="text-[10px] font-black uppercase ml-1">Urgent!</span>}
+                                </div>
+
+                                <span className="text-[11px] text-stone-400 font-mono">
+                                  {new Date(call.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Customer Notes */}
+                            {call.notes && (
+                              <div className="p-3 bg-neutral-950 rounded-2xl border border-neutral-800 text-xs text-amber-200/90 font-medium flex items-start gap-2">
+                                <MessageSquare className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="text-stone-400 text-[11px] font-bold block mb-0.5">Diner Note:</span>
+                                  <span>&ldquo;{call.notes}&rdquo;</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Waiter Dispatch Action Row */}
+                            <div className="pt-2 border-t border-neutral-800/80 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                              {/* Quick Waiter Name Assignment */}
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-xs text-stone-400 font-bold shrink-0 hidden sm:inline">
+                                  Assign:
+                                </span>
+                                <input
+                                  type="text"
+                                  placeholder="Waiter Name (e.g. Waiter Alex / Floor Team)"
+                                  value={customWaiterNames[call.id] || ''}
+                                  onChange={(e) => setCustomWaiterNames(prev => ({ ...prev, [call.id]: e.target.value }))}
+                                  className="flex-1 min-w-[160px] px-3.5 py-2 bg-neutral-950 border border-neutral-800 rounded-xl text-xs text-white placeholder-stone-500 focus:outline-none focus:border-amber-500 transition"
+                                />
+
+                                {/* Quick Waiter Chips */}
+                                <div className="hidden lg:flex items-center gap-1 shrink-0">
+                                  {['Waiter 1', 'Waiter 2', 'Staff'].map(w => (
+                                    <button
+                                      key={w}
+                                      type="button"
+                                      onClick={() => setCustomWaiterNames(prev => ({ ...prev, [call.id]: w }))}
+                                      className="px-2 py-1 text-[10px] bg-neutral-800 hover:bg-neutral-750 text-stone-300 rounded-lg border border-neutral-700 transition"
+                                    >
+                                      {w}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Primary & Secondary Action Buttons */}
+                              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    audioManager.unlockAudio();
+                                    setAudioUnlocked(true);
+                                    audioManager.ringAndAnnounce(getAnnouncementText(call));
+                                  }}
+                                  className="px-3 py-2 bg-neutral-800 hover:bg-neutral-750 text-amber-300 font-bold text-xs rounded-xl border border-neutral-700 transition active:scale-95 flex items-center gap-1.5"
+                                  title="Speak aloud this table request"
+                                >
+                                  <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                                  <span>Speak Aloud 🗣️</span>
+                                </button>
+
+                                {isTableSnoozed(call.table_number) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUnsnoozeTable(call.table_number)}
+                                    className="px-3 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-500/50 font-bold text-xs rounded-xl transition active:scale-95 flex items-center gap-1.5"
+                                  >
+                                    <BellOff className="w-3.5 h-3.5 text-rose-400" />
+                                    <span>Unsnooze</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSnoozeTable(call.table_number)}
+                                    className="px-3 py-2 bg-neutral-800 hover:bg-neutral-750 text-stone-400 hover:text-stone-200 font-bold text-xs rounded-xl border border-neutral-700 transition active:scale-95 flex items-center gap-1.5"
+                                    title="Snooze audio alerts from this table for 5 minutes"
+                                  >
+                                    <BellOff className="w-3.5 h-3.5 text-stone-400" />
+                                    <span>Snooze (5m)</span>
+                                  </button>
+                                )}
+
+                                {/* Big Primary Send Waiter Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleResolveCall(call.id, customWaiterNames[call.id] || 'Staff Waiter')}
+                                  className="flex-1 sm:flex-none px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-neutral-950 font-black text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                  <Send className="w-4 h-4 stroke-[2.5]" />
+                                  <span>Send Waiter to Table #{call.table_number}</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            ) : (
+              /* ATTENDED / RESOLVED OR ALL HISTORY LIST */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-stone-400 px-1">
+                  <span className="font-bold">
+                    {bellFilter === 'RESOLVED' ? 'Attended Calls History' : 'All Calls Record'}
+                  </span>
+                  <span>
+                    {allServiceCalls.filter(c => (bellFilter === 'RESOLVED' ? c.status === 'RESOLVED' : true) && (bellTableFilter === 'ALL' || c.table_number === bellTableFilter)).length} items
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {allServiceCalls
+                    .filter(c => (bellFilter === 'RESOLVED' ? c.status === 'RESOLVED' : true) && (bellTableFilter === 'ALL' || c.table_number === bellTableFilter))
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .map((call) => {
+                      const details = getServiceCallDetails(call);
+                      const isResolved = call.status === 'RESOLVED';
+
+                      return (
+                        <div
+                          key={call.id}
+                          className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        >
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="px-3 py-1 bg-neutral-800 text-amber-400 font-black text-xs rounded-xl border border-neutral-700">
+                              Table #{call.table_number}
+                            </span>
+
+                            <span className={`px-2.5 py-0.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 ${details.badgeClass}`}>
+                              {details.icon}
+                              <span>{details.label}</span>
+                            </span>
+
+                            {call.notes && (
+                              <span className="text-xs text-stone-400 truncate max-w-xs">
+                                &ldquo;{call.notes}&rdquo;
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs shrink-0 flex-wrap">
+                            <span className="text-stone-500 font-mono">
+                              Rung: {new Date(call.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+
+                            {isResolved ? (
+                              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg font-bold">
+                                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                <span>Attended {call.waiter_name ? `by ${call.waiter_name}` : ''}</span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleResolveCall(call.id, 'Staff Waiter')}
+                                className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black rounded-lg transition"
+                              >
+                                Send Waiter Now
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* VIEW B: KITCHEN ORDER TICKETS GRID (WITH COMPACT BELL BANNER ON TOP) */
+          <>
+            {/* Compact Table Service Bells Alert Section (Visible when cooking orders) */}
+            {serviceCalls.length > 0 && (
+              <div className="mb-6 bg-gradient-to-r from-amber-950/50 via-neutral-900 to-amber-950/30 border border-amber-500/60 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-xs">
+                      <BellRing className="w-4 h-4 animate-bounce" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-sm sm:text-base text-amber-400 flex items-center gap-2">
+                        <span>Live Table Service Bells</span>
+                        <span className="px-2 py-0.5 bg-amber-500 text-stone-950 text-[10px] font-black rounded-full">
+                          {serviceCalls.length} Calling
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-stone-400">
+                        Customers ringing bell for water, bill, food info, or waiter
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('BELLS')}
+                    className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs rounded-xl shadow-md transition active:scale-95 flex items-center gap-1.5"
+                  >
+                    <span>Open Full Waiter Dispatch Center</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                  {[...serviceCalls]
+                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                    .slice(0, 3)
+                    .map((call, idx) => {
+                      const details = getServiceCallDetails(call);
+
+                      return (
+                        <div
+                          key={call.id}
+                          className="bg-neutral-900 border border-amber-500/40 rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-md hover:border-amber-400 transition"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="px-2 py-0.5 bg-amber-500 text-stone-950 font-black text-xs rounded-md">
+                                  Table #{call.table_number}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 ${details.badgeClass}`}>
+                                  {details.icon}
+                                  <span>{details.label}</span>
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-stone-400 font-mono">
+                                {formatElapsedTimer(call.created_at)}
+                              </span>
+                            </div>
+
+                            {call.notes && (
+                              <p className="text-xs text-stone-200 bg-neutral-950/80 p-2 rounded-lg border border-neutral-800 mt-2 font-medium">
+                                &ldquo;{call.notes}&rdquo;
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                audioManager.unlockAudio();
+                                setAudioUnlocked(true);
+                                audioManager.ringAndAnnounce(getAnnouncementText(call));
+                              }}
+                              className="py-1.5 px-2.5 bg-neutral-800 hover:bg-neutral-750 text-amber-400 font-bold text-xs rounded-lg border border-neutral-700 transition"
+                              title="Speak this table call aloud"
+                            >
+                              <Volume2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleResolveCall(call.id, 'Floor Waiter')}
+                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-sm transition active:scale-98 flex items-center justify-center gap-1.5"
+                            >
+                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <span>Send Waiter to Table #{call.table_number}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Kitchen Live Order Cards Grid */}
+            {loading ? (
+              <div className="py-24 text-center text-stone-500">
+                <RefreshCw className="w-8 h-8 mx-auto animate-spin mb-3 text-amber-500" />
+                <p className="font-bold text-stone-300 text-sm">Syncing live kitchen orders...</p>
+              </div>
+            ) : displayedOrders.length === 0 ? (
+              <div className="py-24 text-center text-stone-500 max-w-md mx-auto">
+                <div className="w-16 h-16 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center mx-auto mb-3">
+                  <ChefHat className="w-8 h-8 text-stone-500 opacity-60" />
+                </div>
+                <h3 className="text-lg font-bold text-white">No active orders right now</h3>
+                <p className="text-xs text-stone-400 mt-1">
+                  When diners scan a table QR code and order, tickets will pop up here live.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedOrders.map((order) => {
+                  const isPending = order.status === 'PENDING';
+                  const isCooking = order.status === 'CONFIRMED' || order.status === 'PREPARING';
+                  const isOnTheWay = order.status === 'ON_THE_WAY' || order.status === 'READY';
+                  const isServed = order.status === 'SERVED';
+                  const isProcessing = processingOrderId === order.id;
+                  const elapsedMins = getElapsedMinutes(order.created_at);
+
+                  const isUrgent = elapsedMins >= 10;
+                  const isWarning = elapsedMins >= 5 && elapsedMins < 10;
+
+                  const totalItemsCount = order.items?.length || 0;
+                  const preparedItemsCount = order.items?.filter(it => checkedDishIds[it.id] || it.is_prepared).length || 0;
+
+                  return (
+                    <div
+                      key={order.id}
+                      className={`bg-neutral-900 rounded-3xl border flex flex-col justify-between shadow-xl transition-all duration-200 relative ${
+                        isPending
+                          ? 'border-amber-500/70 shadow-amber-500/5'
+                          : isOnTheWay
+                          ? 'border-orange-500/70 shadow-orange-500/10'
+                          : isCooking
+                          ? 'border-emerald-500/50 shadow-emerald-500/5'
+                          : 'border-neutral-800'
+                      }`}
+                    >
                   {/* Clean Card Top Header */}
-                  <div className="p-4 bg-neutral-850/80 border-b border-neutral-800 flex items-center justify-between">
+                  <div className="p-4 bg-neutral-850/80 border-b border-neutral-800 flex items-center justify-between rounded-t-3xl">
                     <div className="flex items-center gap-2.5">
                       {/* Crisp Table Badge */}
                       <span className="px-3.5 py-1.5 bg-amber-500 text-neutral-950 font-black text-sm rounded-xl tracking-tight shadow-sm">
@@ -1005,16 +1582,17 @@ function KitchenLiveOrdersContent() {
                               </div>
 
                               {/* Interactive Single Pill Status Dropdown & Price */}
-                              <div className="flex items-center gap-2.5 shrink-0">
+                              <div className="flex items-center gap-2 shrink-0 relative">
                                 <button
                                   type="button"
-                                  onClick={() => setDishPicker({
-                                    orderId: order.id,
-                                    dishId: item.id,
-                                    dishName: item.item_name,
-                                    tableNumber: order.table_number,
-                                    currentStatus: itemStatus,
-                                  })}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenDishDropdown(prev => 
+                                      (prev?.orderId === order.id && prev?.dishId === item.id) 
+                                        ? null 
+                                        : { orderId: order.id, dishId: item.id }
+                                    );
+                                  }}
                                   className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-xs hover:ring-1 hover:ring-amber-500/40 ${badgeInfo.color}`}
                                   title="Tap to change dish status"
                                 >
@@ -1022,6 +1600,62 @@ function KitchenLiveOrdersContent() {
                                   <span>{badgeInfo.label}</span>
                                   <span className="text-[9px] opacity-60">▾</span>
                                 </button>
+
+                                {/* Dropdown Menu for This Dish */}
+                                {openDishDropdown?.orderId === order.id && openDishDropdown?.dishId === item.id && (
+                                  <>
+                                    {/* Invisible backdrop to dismiss dropdown on click outside */}
+                                    <div 
+                                      className="fixed inset-0 z-40" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenDishDropdown(null);
+                                      }} 
+                                    />
+                                    <div 
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="absolute right-0 top-full mt-1.5 w-48 bg-neutral-900 border border-neutral-700/90 rounded-2xl shadow-2xl p-1.5 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100"
+                                    >
+                                      <div className="px-2 py-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider border-b border-neutral-800 flex items-center justify-between">
+                                        <span>Status</span>
+                                        <button 
+                                          type="button" 
+                                          onClick={() => setOpenDishDropdown(null)}
+                                          className="text-stone-500 hover:text-white"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                      {ALL_DISH_STATUS_OPTIONS.map((opt) => {
+                                        const isCurrent = itemStatus === opt.status;
+                                        return (
+                                          <button
+                                            key={opt.status}
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setOpenDishDropdown(null);
+                                              if (!isCurrent) {
+                                                promptDishStatusChange(order, item, opt.status, `Set to ${opt.label}`);
+                                              }
+                                            }}
+                                            className={`w-full px-2.5 py-1.5 rounded-xl text-left flex items-center justify-between text-xs font-semibold transition ${
+                                              isCurrent
+                                                ? 'bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30'
+                                                : 'text-stone-300 hover:text-white hover:bg-neutral-800'
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-sm">{opt.icon}</span>
+                                              <span>{opt.label}</span>
+                                            </div>
+                                            {isCurrent && <span className="text-[10px] text-amber-400 font-bold">✓</span>}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                )}
 
                                 <span className={`text-xs font-mono font-bold ${isRejected ? 'line-through text-stone-500' : 'text-stone-300'}`}>
                                   {currency}{(item.item_price * item.quantity).toFixed(0)}
@@ -1196,6 +1830,8 @@ function KitchenLiveOrdersContent() {
             })}
           </div>
         )}
+        </>
+      )}
       </main>
 
       {/* Confirmation Modal for ANY Kitchen Status Change */}
@@ -1387,86 +2023,6 @@ function KitchenLiveOrdersContent() {
                 <Check className="w-4 h-4 stroke-[3]" />
                 <span>Confirm</span>
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Dish Status Picker Modal */}
-      {dishPicker && (
-        <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-neutral-900 border border-neutral-700/80 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
-                  🍽️
-                </div>
-                <div>
-                  <h3 className="font-black text-base text-white">
-                    Update Dish Status
-                  </h3>
-                  <p className="text-xs text-amber-400 font-bold truncate max-w-[220px]">
-                    Table #{dishPicker.tableNumber} • {dishPicker.dishName}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDishPicker(null)}
-                className="p-1.5 rounded-lg bg-neutral-800 text-stone-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-xs text-stone-300">
-              Select status for <strong className="text-white">{dishPicker.dishName}</strong>:
-            </p>
-
-            <div className="space-y-2">
-              {ALL_DISH_STATUS_OPTIONS.map((opt) => {
-                const isCurrent = dishPicker.currentStatus === opt.status;
-
-                return (
-                  <button
-                    key={opt.status}
-                    type="button"
-                    onClick={() => {
-                      const order = orders.find(o => o.id === dishPicker.orderId);
-                      const item = order?.items?.find(it => it.id === dishPicker.dishId);
-                      if (order && item) {
-                        setDishPicker(null);
-                        promptDishStatusChange(order, item, opt.status, `Set to ${opt.label}`);
-                      }
-                    }}
-                    className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-all group ${
-                      isCurrent
-                        ? 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40'
-                        : 'bg-neutral-950/70 border-neutral-800 hover:bg-neutral-850 hover:border-neutral-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{opt.icon}</span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-white">{opt.label}</span>
-                          <span className="text-[11px] text-amber-400/80 font-normal">({opt.hindiLabel})</span>
-                          {isCurrent && (
-                            <span className="px-1.5 py-0.2 text-[9px] bg-amber-500 text-neutral-950 font-black rounded-full uppercase">
-                              Current
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-stone-400 mt-0.5">{opt.desc}</p>
-                      </div>
-                    </div>
-
-                    <span className="text-xs text-stone-500 font-bold group-hover:text-amber-400 transition">
-                      Select &rarr;
-                    </span>
-                  </button>
-                );
-              })}
             </div>
           </div>
         </div>

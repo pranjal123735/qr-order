@@ -95,9 +95,8 @@ export function FoodInfoBellModal({
     if (cooldownSeconds > 0) return;
     try {
       setIsSubmitting(true);
-      // Play audio chime and speak what dish was selected
-      await audioManager.unlockAudio();
-      audioManager.ringAndAnnounce(`Kitchen bell rung for ${item.item_name}. Table ${tableNumber}.`);
+      // On customer mobile device: gentle confirmation chime only (never speak aloud in dining room)
+      audioManager.playSuccessChime();
 
       // 90 second cooldown for this dish
       const cooldownUntil = Date.now() + 90000;

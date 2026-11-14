@@ -89,28 +89,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const effectiveRestaurantId = (restaurant_id === 'rustic-grill' || restaurant_id === 'demo')
+      ? 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
+      : restaurant_id;
+
     // Refresh memory
     memoryCalls = loadCallsFromFile();
 
-    // Anti-Spam Deduplication Guard (60s check)
+    // Short deduplication window (10s) to absorb accidental double-taps while allowing new rings
     const existingActive = memoryCalls.find(
       c =>
-        c.restaurant_id === restaurant_id &&
-        c.table_number === table_number &&
+        (c.restaurant_id === effectiveRestaurantId || c.restaurant_id === restaurant_id) &&
+        c.table_number === Number(table_number) &&
         c.status === 'PENDING' &&
         (c.type === type || (item_id && c.item_id === item_id))
     );
 
     if (existingActive) {
       const elapsed = Date.now() - new Date(existingActive.created_at).getTime();
-      if (elapsed < 60000) {
+      if (elapsed < 10000) {
         return NextResponse.json({ call: existingActive, deduplicated: true });
       }
     }
 
     const newCall: ServiceCall = {
       id: 'call-' + Math.random().toString(36).substring(2, 9),
-      restaurant_id,
+      restaurant_id: effectiveRestaurantId,
       table_number: Number(table_number),
       order_id: order_id || undefined,
       type,
