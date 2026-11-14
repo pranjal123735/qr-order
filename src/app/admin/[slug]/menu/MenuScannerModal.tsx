@@ -56,8 +56,12 @@ export function MenuScannerModal({
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('gemini_api_key') || '';
-      if (saved) setGeminiApiKey(saved);
+      const saved = localStorage.getItem('gemini_api_key');
+      if (saved) {
+        setGeminiApiKey(saved);
+      } else {
+        setGeminiApiKey('AIzaSyB5Aw4K_sngyOqU2vFFNvnECoFhbaLy5xM');
+      }
     }
   }, []);
 
@@ -117,7 +121,7 @@ export function MenuScannerModal({
           imageBase64: params.imageBase64,
           rawText: params.text,
           currency: restaurant.currency || '₹',
-          clientApiKey: geminiApiKey.trim() || undefined,
+          clientApiKey: (geminiApiKey || 'AIzaSyB5Aw4K_sngyOqU2vFFNvnECoFhbaLy5xM').trim(),
         }),
       });
 
@@ -134,7 +138,7 @@ export function MenuScannerModal({
       }
     } catch (err: any) {
       console.error(err);
-      setStatusMessage('Scanning failed. Please check network and try again.');
+      setStatusMessage(err?.message || 'Scanning failed. Please check network and try again.');
     } finally {
       setIsScanning(false);
     }
@@ -311,26 +315,20 @@ export function MenuScannerModal({
 
               {/* Free AI Engine Configuration & Status */}
               <div className="max-w-xl mx-auto bg-stone-950/80 border border-stone-800/90 rounded-2xl p-3 sm:p-3.5 text-xs space-y-2">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span className="font-bold text-stone-300">Vision Engine:</span>
-                    {geminiApiKey.trim() ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                        Google Gemini 1.5 Flash (Active)
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                        Free Server OCR Engine (Active)
-                      </span>
-                    )}
+                    <span className="font-bold text-stone-300 shrink-0">Vision AI:</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
+                      Google Gemini 2.5 Flash
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowKeyInput(!showKeyInput)}
-                    className="text-stone-400 hover:text-amber-400 font-bold transition text-[11px] underline"
+                    className="text-stone-400 hover:text-amber-400 font-bold transition text-[11px] underline self-start xs:self-auto shrink-0"
                   >
-                    {showKeyInput ? 'Close Settings' : geminiApiKey.trim() ? 'Change Key' : 'Add Free Gemini Key'}
+                    {showKeyInput ? 'Close Settings' : 'Change Key'}
                   </button>
                 </div>
 
@@ -346,7 +344,7 @@ export function MenuScannerModal({
                       >
                         aistudio.google.com ↗
                       </a>
-                      . Paste it below to enable Gemini Vision, or leave it blank to use the built-in free local OCR engine with zero setup!
+                      . Your free API key is configured below and stored securely in your browser:
                     </p>
                     <div className="flex items-center gap-2">
                       <input

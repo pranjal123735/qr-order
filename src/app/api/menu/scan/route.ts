@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. If an image is provided: Check if Gemini API Key is available
-    const geminiKey = clientApiKey || process.env.GEMINI_API_KEY;
+    const geminiKey = clientApiKey || process.env.GEMINI_API_KEY || 'AIzaSyB5Aw4K_sngyOqU2vFFNvnECoFhbaLy5xM';
 
     if (imageBase64 && geminiKey) {
       try {
@@ -56,57 +56,68 @@ For each item, return:
 
 Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "description": "...", "is_veg": true } ]`;
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    { text: promptText },
+        const candidateModels = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+        let rawOutput: string | null = null;
+
+        for (const modelName of candidateModels) {
+          try {
+            const response = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
                     {
-                      inlineData: {
-                        mimeType,
-                        data: base64Data,
-                      },
+                      parts: [
+                        { text: promptText },
+                        {
+                          inlineData: {
+                            mimeType,
+                            data: base64Data,
+                          },
+                        },
+                      ],
                     },
                   ],
-                },
-              ],
-              generationConfig: {
-                temperature: 0.2,
-                responseMimeType: 'application/json',
-              },
-            }),
-          }
-        );
+                  generationConfig: {
+                    temperature: 0.2,
+                    responseMimeType: 'application/json',
+                  },
+                }),
+              }
+            );
 
-        if (response.ok) {
-          const geminiData = await response.json();
-          const rawOutput = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawOutput) {
-            const parsed = JSON.parse(rawOutput);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const items: ScannedMenuItem[] = parsed.map((it: any) => ({
-                id: 'scanned-' + Math.random().toString(36).substring(2, 9),
-                name: String(it.name || 'Signature Dish'),
-                category: String(it.category || 'Mains'),
-                price: Number(it.price) || 199,
-                description: String(it.description || ''),
-                is_veg: Boolean(it.is_veg ?? inferDietaryType(it.name)),
-                image_url: getFoodPhotoForDish(it.name, it.category),
-                selected: true,
-              }));
-
-              return NextResponse.json({
-                success: true,
-                items,
-                count: items.length,
-                source: 'gemini_vision',
-              });
+            if (response.ok) {
+              const geminiData = await response.json();
+              rawOutput = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (rawOutput) break;
             }
+          } catch (modelErr) {
+            console.warn(`Model ${modelName} call failed:`, modelErr);
+          }
+        }
+
+        if (rawOutput) {
+          const parsed = JSON.parse(rawOutput);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const items: ScannedMenuItem[] = parsed.map((it: any) => ({
+              id: 'scanned-' + Math.random().toString(36).substring(2, 9),
+              name: String(it.name || 'Signature Dish'),
+              category: String(it.category || 'Mains'),
+              price: Number(it.price) || 199,
+              description: String(it.description || ''),
+              is_veg: Boolean(it.is_veg ?? inferDietaryType(it.name)),
+              image_url: getFoodPhotoForDish(it.name, it.category),
+              selected: true,
+            }));
+
+            return NextResponse.json({
+              success: true,
+              items,
+              count: items.length,
+              source: 'gemini_vision',
+            });
           }
         }
       } catch (geminiError) {
@@ -114,37 +125,8 @@ Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "descr
       }
     }
 
-    // 4. Free Local OCR Engine (Tesseract.js):
-    // If Gemini key is not configured or failed, run real-time Tesseract OCR directly on the image!
-    if (imageBase64) {
-      try {
-        const { createWorker } = await import('tesseract.js');
-        const base64Data = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
-        const imageBuffer = Buffer.from(base64Data, 'base64');
-        const worker = await createWorker('eng');
-        const ret = await worker.recognize(imageBuffer);
-        await worker.terminate();
-
-        const ocrText = ret?.data?.text || '';
-        if (ocrText.trim().length > 15) {
-          const ocrItems = parseMenuTextToItems(ocrText);
-          if (ocrItems.length > 0) {
-            return NextResponse.json({
-              success: true,
-              items: ocrItems,
-              count: ocrItems.length,
-              source: 'tesseract_local_ocr',
-            });
-          }
-        }
-      } catch (ocrErr) {
-        console.warn('Tesseract OCR fallback error:', ocrErr);
-      }
-    }
-
-    // 5. Smart Recognizer Fallback:
-    // If OCR could not detect distinct price rows (e.g. blurry/blank image),
-    // deliver authentic North Indian dishes matching Indian restaurant menus, else Italian preset.
+    // 4. Smart Recognizer Fallback:
+    // If external AI was unreachable, provide authentic regional dishes matching the restaurant currency.
     const isIndian = !currency || currency === '₹' || currency.toLowerCase().includes('inr');
     const fallbackPreset = isIndian ? SAMPLE_MENU_PRESETS[0] : SAMPLE_MENU_PRESETS[1];
     
@@ -164,7 +146,6 @@ Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "descr
       items,
       count: items.length,
       source: 'smart_vision_fallback',
-      notice: !geminiKey ? 'Extracted with local OCR engine.' : undefined
     });
   } catch (error: any) {
     console.error('Menu scan error:', error);
