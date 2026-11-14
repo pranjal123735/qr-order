@@ -114,6 +114,19 @@ function OrderTrackingContent() {
           audioManager.playSuccessChime();
         } else if (updated.status === 'CANCELLED') {
           audioManager.playCancelTone();
+        } else {
+          // Check if any individual item was updated to ON_THE_WAY or REJECTED
+          const anyNewOnTheWay = updated.items?.some(it => 
+            it.item_status === 'ON_THE_WAY' && prev?.items?.find(p => p.id === it.id)?.item_status !== 'ON_THE_WAY'
+          );
+          const anyNewRejected = updated.items?.some(it => 
+            it.item_status === 'REJECTED' && prev?.items?.find(p => p.id === it.id)?.item_status !== 'REJECTED'
+          );
+          if (anyNewOnTheWay) {
+            audioManager.playSuccessChime();
+          } else if (anyNewRejected) {
+            audioManager.playCancelTone();
+          }
         }
         return updated;
       });
@@ -587,14 +600,20 @@ function OrderTrackingContent() {
         {!isCancelled && !isRejected && order.items && order.items.length > 0 && (() => {
           const items = order.items;
           const totalItemsCount = items.length;
-          const readyItemsCount = items.filter(it => it.item_status === 'READY' || it.is_prepared).length;
+          const servedItemsCount = items.filter(it => it.item_status === 'SERVED').length;
+          const onTheWayItemsCount = items.filter(it => it.item_status === 'ON_THE_WAY').length;
           const cookingItemsCount = items.filter(it => it.item_status === 'COOKING').length;
-          const queuedItemsCount = items.filter(it => it.item_status === 'QUEUED' || (!it.item_status && !it.is_prepared && !isPending)).length;
+          const readyItemsCount = items.filter(it => (it.item_status === 'READY' || it.is_prepared) && it.item_status !== 'SERVED' && it.item_status !== 'ON_THE_WAY').length;
+          const rejectedItemsCount = items.filter(it => it.item_status === 'REJECTED').length;
+          const queuedItemsCount = items.filter(it => !it.item_status || it.item_status === 'QUEUED' || (it.item_status === 'PENDING' && !isPending)).length;
           const pendingItemsCount = isPending ? totalItemsCount : items.filter(it => it.item_status === 'PENDING').length;
 
+          const servedPct = totalItemsCount > 0 ? (servedItemsCount / totalItemsCount) * 100 : 0;
+          const onTheWayPct = totalItemsCount > 0 ? (onTheWayItemsCount / totalItemsCount) * 100 : 0;
           const readyPct = totalItemsCount > 0 ? (readyItemsCount / totalItemsCount) * 100 : 0;
           const cookingPct = totalItemsCount > 0 ? (cookingItemsCount / totalItemsCount) * 100 : 0;
-          const queuedPct = totalItemsCount > 0 ? ((queuedItemsCount + (isPending ? 0 : pendingItemsCount)) / totalItemsCount) * 100 : 0;
+          const rejectedPct = totalItemsCount > 0 ? (rejectedItemsCount / totalItemsCount) * 100 : 0;
+          const queuedPct = totalItemsCount > 0 ? (((isPending ? 0 : queuedItemsCount) + (isPending ? 0 : pendingItemsCount)) / totalItemsCount) * 100 : 0;
 
           return (
             <div className="bg-white rounded-3xl p-5 border border-stone-200/90 shadow-sm space-y-4">
@@ -621,10 +640,24 @@ function OrderTrackingContent() {
               {/* Visual Multi-Segment Progress Strip */}
               <div className="space-y-1.5">
                 <div className="h-2.5 w-full bg-stone-100 rounded-full overflow-hidden flex gap-1 p-0.5">
+                  {servedPct > 0 && (
+                    <div 
+                      style={{ width: `${servedPct}%` }} 
+                      className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                      title={`${servedItemsCount} Served`}
+                    />
+                  )}
+                  {onTheWayPct > 0 && (
+                    <div 
+                      style={{ width: `${onTheWayPct}%` }} 
+                      className="h-full bg-orange-500 rounded-full animate-pulse transition-all duration-500"
+                      title={`${onTheWayItemsCount} On the Way`}
+                    />
+                  )}
                   {readyPct > 0 && (
                     <div 
                       style={{ width: `${readyPct}%` }} 
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                      className="h-full bg-emerald-400 rounded-full transition-all duration-500"
                       title={`${readyItemsCount} Ready`}
                     />
                   )}
@@ -633,6 +666,13 @@ function OrderTrackingContent() {
                       style={{ width: `${cookingPct}%` }} 
                       className="h-full bg-amber-500 rounded-full animate-pulse transition-all duration-500"
                       title={`${cookingItemsCount} Cooking`}
+                    />
+                  )}
+                  {rejectedPct > 0 && (
+                    <div 
+                      style={{ width: `${rejectedPct}%` }} 
+                      className="h-full bg-rose-500 rounded-full transition-all duration-500"
+                      title={`${rejectedItemsCount} Rejected`}
                     />
                   )}
                   {queuedPct > 0 && (
@@ -646,16 +686,34 @@ function OrderTrackingContent() {
 
                 {/* Status Summary Pills */}
                 <div className="flex items-center justify-between text-[11px] font-bold text-stone-500 px-0.5 flex-wrap gap-1.5 pt-0.5">
+                  {servedItemsCount > 0 && (
+                    <span className="flex items-center gap-1 text-emerald-800 font-black">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                      <span>{servedItemsCount} {t.dish_status_served}</span>
+                    </span>
+                  )}
+                  {onTheWayItemsCount > 0 && (
+                    <span className="flex items-center gap-1 text-orange-700 font-black">
+                      <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                      <span>{onTheWayItemsCount} {t.dish_status_on_the_way}</span>
+                    </span>
+                  )}
                   {readyItemsCount > 0 && (
                     <span className="flex items-center gap-1 text-emerald-700 font-black">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      <span>{readyItemsCount} {isHindi ? 'तैयार' : 'Ready'}</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span>{readyItemsCount} {t.dish_status_ready}</span>
                     </span>
                   )}
                   {cookingItemsCount > 0 && (
                     <span className="flex items-center gap-1 text-amber-700 font-black">
                       <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                      <span>{cookingItemsCount} {isHindi ? 'पक रहा है' : 'Cooking'}</span>
+                      <span>{cookingItemsCount} {t.dish_status_cooking}</span>
+                    </span>
+                  )}
+                  {rejectedItemsCount > 0 && (
+                    <span className="flex items-center gap-1 text-rose-700 font-black">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      <span>{rejectedItemsCount} {t.dish_status_rejected}</span>
                     </span>
                   )}
                   {(queuedItemsCount > 0 || (isPending && totalItemsCount > 0)) && (
@@ -663,8 +721,8 @@ function OrderTrackingContent() {
                       <span className="w-2 h-2 rounded-full bg-stone-400" />
                       <span>
                         {isPending 
-                          ? `${totalItemsCount} ${isHindi ? 'पुष्टि की प्रतीक्षा' : 'Awaiting Confirmation'}`
-                          : `${queuedItemsCount} ${isHindi ? 'कतार में' : 'In Queue'}`
+                          ? `${totalItemsCount} ${t.dish_status_pending}`
+                          : `${queuedItemsCount} ${t.dish_status_queued}`
                         }
                       </span>
                     </span>
@@ -675,38 +733,69 @@ function OrderTrackingContent() {
               {/* Individual Dishes List */}
               <div className="space-y-2 pt-1 divide-y divide-stone-100">
                 {items.map((item) => {
-                  let status: 'READY' | 'COOKING' | 'QUEUED' | 'PENDING' = 'QUEUED';
-                  if (isPending) {
-                    status = 'PENDING';
+                  let status: 'SERVED' | 'ON_THE_WAY' | 'READY' | 'COOKING' | 'REJECTED' | 'QUEUED' | 'PENDING' = 'QUEUED';
+                  if (item.item_status === 'REJECTED') {
+                    status = 'REJECTED';
+                  } else if (item.item_status === 'SERVED') {
+                    status = 'SERVED';
+                  } else if (item.item_status === 'ON_THE_WAY') {
+                    status = 'ON_THE_WAY';
                   } else if (item.is_prepared || item.item_status === 'READY') {
                     status = 'READY';
                   } else if (item.item_status === 'COOKING') {
                     status = 'COOKING';
-                  } else if (item.item_status === 'PENDING') {
+                  } else if (isPending || item.item_status === 'PENDING') {
                     status = 'PENDING';
                   } else {
                     status = 'QUEUED';
                   }
 
+                  const isRejectedDish = status === 'REJECTED';
+                  const isOnTheWayDish = status === 'ON_THE_WAY';
+
                   return (
                     <div 
                       key={item.id} 
-                      className={`pt-2.5 first:pt-0 flex items-center justify-between gap-3 transition-all ${
-                        status === 'COOKING' ? 'p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-xs' : ''
+                      className={`pt-2.5 first:pt-0 flex items-start justify-between gap-3 transition-all ${
+                        isOnTheWayDish 
+                          ? 'p-3 rounded-2xl bg-orange-50 border border-orange-200 shadow-xs' 
+                          : status === 'COOKING' 
+                          ? 'p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-xs' 
+                          : isRejectedDish 
+                          ? 'p-2.5 rounded-2xl bg-rose-50 border border-rose-200' 
+                          : ''
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
                         {/* Quantity Tag */}
-                        <span className="px-2 py-0.5 bg-stone-100 text-stone-900 font-black text-xs rounded-lg shrink-0">
+                        <span className={`px-2 py-0.5 font-black text-xs rounded-lg shrink-0 ${
+                          isRejectedDish 
+                            ? 'bg-rose-100 text-rose-800' 
+                            : isOnTheWayDish 
+                            ? 'bg-orange-500 text-stone-950 font-black' 
+                            : 'bg-stone-100 text-stone-900'
+                        }`}>
                           {item.quantity}×
                         </span>
 
                         <div className="min-w-0 flex-1">
-                          <h4 className="font-bold text-xs sm:text-sm text-stone-900 truncate">
+                          <h4 className={`font-bold text-xs sm:text-sm truncate ${
+                            isRejectedDish ? 'line-through text-rose-700/80' : 'text-stone-900'
+                          }`}>
                             {translateFoodName(item.item_name, isHindi)}
                           </h4>
+                          {isRejectedDish && (
+                            <p className="text-[11px] text-rose-600 font-bold mt-0.5">
+                              ⚠️ {t.dish_rejected_alert}
+                            </p>
+                          )}
+                          {isOnTheWayDish && (
+                            <p className="text-[11px] text-orange-700 font-bold mt-0.5 animate-pulse">
+                              🚀 {t.dish_on_the_way_alert}
+                            </p>
+                          )}
                           {item.notes && (
-                            <p className="text-[10px] text-amber-700 italic truncate font-medium">
+                            <p className="text-[10px] text-amber-700 italic truncate font-medium mt-0.5">
                               Note: {item.notes}
                             </p>
                           )}
@@ -715,17 +804,37 @@ function OrderTrackingContent() {
 
                       {/* Dish Status Pill & Food Bell */}
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Ring Bell for Food Info */}
-                        <button
-                          type="button"
-                          onClick={() => handleOpenFoodBell(item)}
-                          title={t.bell_food_info}
-                          className="px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-950 border border-amber-500/30 rounded-xl text-[10px] font-black flex items-center gap-1 transition active:scale-95 shadow-2xs group"
-                        >
-                          <BellRing className="w-3.5 h-3.5 text-amber-700 group-hover:animate-bounce" />
-                          <span className="hidden xs:inline">{t.btn_ring_bell}</span>
-                        </button>
+                        {/* Ring Bell for Food Info (only for non-rejected items) */}
+                        {!isRejectedDish && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenFoodBell(item)}
+                            title={t.bell_food_info}
+                            className="px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-950 border border-amber-500/30 rounded-xl text-[10px] font-black flex items-center gap-1 transition active:scale-95 shadow-2xs group"
+                          >
+                            <BellRing className="w-3.5 h-3.5 text-amber-700 group-hover:animate-bounce" />
+                            <span className="hidden xs:inline">{t.btn_ring_bell}</span>
+                          </button>
+                        )}
 
+                        {status === 'REJECTED' && (
+                          <span className="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-300 rounded-full text-[11px] font-black flex items-center gap-1 shadow-xs">
+                            <XCircle className="w-3.5 h-3.5 text-rose-600 inline" />
+                            <span>{t.dish_status_rejected}</span>
+                          </span>
+                        )}
+                        {status === 'ON_THE_WAY' && (
+                          <span className="px-2.5 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 border border-orange-400 rounded-full text-[11px] font-black flex items-center gap-1 shadow-sm animate-pulse">
+                            <Rocket className="w-3.5 h-3.5 text-stone-950 inline" />
+                            <span>{t.dish_status_on_the_way}</span>
+                          </span>
+                        )}
+                        {status === 'SERVED' && (
+                          <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full text-[11px] font-black flex items-center gap-1 shadow-xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 inline" />
+                            <span>{t.dish_status_served}</span>
+                          </span>
+                        )}
                         {status === 'READY' && (
                           <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[11px] font-black flex items-center gap-1 shadow-xs">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
@@ -774,49 +883,103 @@ function OrderTrackingContent() {
           </div>
 
           <div className="space-y-3">
-            {order.items?.map((item) => (
-              <div key={item.id} className="flex items-start justify-between text-sm py-1.5 border-b border-stone-50 last:border-0">
-                <div className="flex-1 pr-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 bg-stone-100 text-stone-900 font-black text-xs rounded-md">
-                      {item.quantity}×
-                    </span>
-                    <span className="font-bold text-stone-900">
-                      {translateFoodName(item.item_name, isHindi)}
-                    </span>
-                    {/* Real-time cooked status badge */}
-                    {item.is_prepared ? (
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" /> {t.cooked_and_ready}
+            {order.items?.map((item) => {
+              const isRejected = item.item_status === 'REJECTED';
+              const isOnTheWay = item.item_status === 'ON_THE_WAY';
+              const isServed = item.item_status === 'SERVED';
+              const isCooking = item.item_status === 'COOKING';
+              const isReady = item.is_prepared || item.item_status === 'READY';
+
+              return (
+                <div key={item.id} className={`flex items-start justify-between text-sm py-2 border-b border-stone-100 last:border-0 ${
+                  isRejected ? 'opacity-85' : ''
+                }`}>
+                  <div className="flex-1 pr-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`px-2 py-0.5 font-black text-xs rounded-md ${
+                        isRejected ? 'bg-rose-100 text-rose-800' : 'bg-stone-100 text-stone-900'
+                      }`}>
+                        {item.quantity}×
                       </span>
-                    ) : (
-                      <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-medium rounded-md">
-                        {t.preparing_status}
+                      <span className={`font-bold ${
+                        isRejected ? 'line-through text-stone-500' : 'text-stone-900'
+                      }`}>
+                        {translateFoodName(item.item_name, isHindi)}
                       </span>
+
+                      {/* Real-time individual item status badge */}
+                      {isRejected ? (
+                        <span className="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-200 text-[10px] font-black rounded-md flex items-center gap-1">
+                          <XCircle className="w-3 h-3 text-rose-600 inline" /> {t.dish_status_rejected}
+                        </span>
+                      ) : isOnTheWay ? (
+                        <span className="px-2 py-0.5 bg-gradient-to-r from-orange-500 to-amber-500 text-stone-950 font-black text-[10px] rounded-md flex items-center gap-1 shadow-xs animate-pulse">
+                          <Rocket className="w-3 h-3 text-stone-950 inline" /> {t.dish_status_on_the_way}
+                        </span>
+                      ) : isServed ? (
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" /> {t.dish_status_served}
+                        </span>
+                      ) : isReady ? (
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" /> {t.dish_status_ready}
+                        </span>
+                      ) : isCooking ? (
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-md flex items-center gap-1">
+                          <Flame className="w-3 h-3 text-amber-700 inline" /> {t.dish_status_cooking}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-stone-100 text-stone-600 text-[10px] font-medium rounded-md">
+                          {t.dish_status_queued}
+                        </span>
+                      )}
+
+                      {/* Ring Bell for Food Info (if not rejected) */}
+                      {!isRejected && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenFoodBell(item)}
+                          title={t.bell_food_info}
+                          className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/90 rounded-md text-[10px] font-bold flex items-center gap-1 transition active:scale-95 shadow-2xs group"
+                        >
+                          <BellRing className="w-3 h-3 text-amber-600 group-hover:animate-bounce" />
+                          <span>{t.btn_ring_bell}</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {isRejected && (
+                      <p className="text-[11px] text-rose-600 font-bold pl-7 mt-0.5">
+                        ⚠️ {t.dish_rejected_alert}
+                      </p>
                     )}
 
-                    {/* Ring Bell for Food Info */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenFoodBell(item)}
-                      title={t.bell_food_info}
-                      className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/90 rounded-md text-[10px] font-bold flex items-center gap-1 transition active:scale-95 shadow-2xs group"
-                    >
-                      <BellRing className="w-3 h-3 text-amber-600 group-hover:animate-bounce" />
-                      <span>{t.btn_ring_bell}</span>
-                    </button>
+                    {isOnTheWay && (
+                      <p className="text-[11px] text-orange-600 font-bold pl-7 mt-0.5 animate-pulse">
+                        🚀 {t.dish_on_the_way_alert}
+                      </p>
+                    )}
+
+                    {item.notes && (
+                      <p className="text-[11px] text-amber-700 italic pl-7 mt-0.5 font-medium">
+                        {t.special_note_label}{item.notes}
+                      </p>
+                    )}
                   </div>
-                  {item.notes && (
-                    <p className="text-[11px] text-amber-700 italic pl-7 mt-0.5 font-medium">
-                      {t.special_note_label}{item.notes}
-                    </p>
-                  )}
+
+                  <div className="text-right shrink-0">
+                    <span className={`font-black ${isRejected ? 'line-through text-stone-400' : 'text-stone-900'}`}>
+                      {currency}{(item.item_price * item.quantity).toFixed(0)}
+                    </span>
+                    {isRejected && (
+                      <span className="block text-[10px] text-rose-600 font-bold">
+                        Cancelled (₹0)
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="font-black text-stone-900">
-                  {currency}{(item.item_price * item.quantity).toFixed(0)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {order.notes && (
@@ -828,7 +991,21 @@ function OrderTrackingContent() {
 
           <div className="pt-3 border-t border-stone-100 flex items-center justify-between font-black text-lg text-stone-950">
             <span>{t.total_bill}</span>
-            <span>{currency}{order.total_amount.toFixed(0)}</span>
+            {(() => {
+              const activeTotal = order.items?.reduce((sum, it) => it.item_status === 'REJECTED' ? sum : sum + (it.item_price * it.quantity), 0) ?? order.total_amount;
+              const hasRejected = order.items?.some(it => it.item_status === 'REJECTED');
+
+              return (
+                <div className="flex items-center gap-2">
+                  {hasRejected && (
+                    <span className="line-through text-sm font-normal text-stone-400">
+                      {currency}{order.total_amount.toFixed(0)}
+                    </span>
+                  )}
+                  <span>{currency}{activeTotal.toFixed(0)}</span>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
