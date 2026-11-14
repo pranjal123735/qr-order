@@ -125,23 +125,31 @@ export const FOOD_PHOTO_LIBRARY: Array<{ keywords: string[]; title: string; urls
     keywords: ['butter naan', 'plain naan', 'chily garlic naan', 'garli naan', 'garlic naan', 'stuffed aloo naan', 'stuffed paneer naan', 'naan'],
     title: 'Tandoori Garlic Butter Naan',
     urls: [
-      'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80',
     ]
   },
   {
     keywords: ['roomali roti', 'plain tandoori roti', 'butter tandoori roti', 'tandoori roti', 'roti', 'chapati', 'phulka'],
     title: 'Tandoori Hot Roti & Roomali Roti',
     urls: [
-      'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=800&auto=format&fit=crop&q=80',
     ]
   },
   {
     keywords: ['lachha paratha', 'pudina paratha', 'mirchi paratha', 'aloo paratha', 'paratha'],
     title: 'Crispy Layered Lachha Paratha',
     urls: [
+      'https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['samosa', 'samosas', 'singara', 'crispy samosa'],
+    title: 'Crispy Golden Samosa',
+    urls: [
       'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80',
     ]
   },
   {
@@ -180,8 +188,8 @@ export const FOOD_PHOTO_LIBRARY: Array<{ keywords: string[]; title: string; urls
     keywords: ['tawa chaap', 'meethi malai chaap', 'chaap lababdar', 'chaap tikka butter masala', 'chaap', 'soya chaap'],
     title: 'Sizzling Tandoori Soya Chaap',
     urls: [
-      'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80',
     ]
   },
   {
@@ -196,8 +204,8 @@ export const FOOD_PHOTO_LIBRARY: Array<{ keywords: string[]; title: string; urls
     keywords: ['tikka', 'tandoori chicken', 'kebab', 'seekh kebab', 'paneer tikka', 'starter'],
     title: 'Charcoal Tandoori Tikka',
     urls: [
-      'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=800&auto=format&fit=crop&q=80',
     ]
   },
   // Sides & Starters
@@ -330,8 +338,8 @@ export const FOOD_PHOTO_LIBRARY: Array<{ keywords: string[]; title: string; urls
     keywords: ['gulab jamun', 'rasgulla', 'jalebi', 'sweet', 'halwa'],
     title: 'Warm Indian Sweets',
     urls: [
-      'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=800&auto=format&fit=crop&q=80',
       'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
     ]
   }
 ];

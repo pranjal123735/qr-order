@@ -5,7 +5,7 @@ import { getFoodPhotoForDish } from '@/lib/foodImageSearch';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { imageBase64, rawText, presetId, currency, clientApiKey } = body;
+    const { imageBase64, imagesBase64, rawText, presetId, currency, clientApiKey } = body;
 
     // 1. If user selected a preset menu template
     if (presetId) {
@@ -33,20 +33,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. If an image is provided: Check if Gemini API Key is available
-    const geminiKey = clientApiKey || process.env.GEMINI_API_KEY || 'AIzaSyB5Aw4K_sngyOqU2vFFNvnECoFhbaLy5xM';
+    // 3. Multi-Image & Single-Image AI Vision Processing
+    const images: string[] = Array.isArray(imagesBase64) && imagesBase64.length > 0
+      ? imagesBase64
+      : imageBase64
+      ? [imageBase64]
+      : [];
 
-    if (imageBase64 && geminiKey) {
+    const geminiKey = clientApiKey || process.env.GEMINI_API_KEY;
+
+    if (images.length > 0 && geminiKey) {
       try {
-        const mimeType = imageBase64.includes('image/png')
-          ? 'image/png'
-          : imageBase64.includes('image/webp')
-          ? 'image/webp'
-          : 'image/jpeg';
-
-        const base64Data = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
-
-        const promptText = `Analyze this physical restaurant menu photo. Extract all visible food and beverage items into a clean JSON array.
+        const parts: any[] = [
+          {
+            text: `Analyze these physical restaurant menu photos (one or multiple pages). Extract all visible food and beverage items into a clean JSON array.
 For each item, return:
 - "name": string (dish title, e.g. "Rajma Rice", "Paneer Lazeez", "Daal Makhni", "Butter Naan")
 - "category": string (e.g. "Main Course", "Paneer Curries", "Daal", "Indian Breads", "Rice")
@@ -54,7 +54,21 @@ For each item, return:
 - "description": string (short description or ingredients from the menu, or a delicious 1-sentence culinary description)
 - "is_veg": boolean (true for vegetarian/vegan, false for meat/poultry/fish/egg)
 
-Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "description": "...", "is_veg": true } ]`;
+Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "description": "...", "is_veg": true } ]`,
+          },
+        ];
+
+        for (const img of images) {
+          const mimeType = img.includes('image/png')
+            ? 'image/png'
+            : img.includes('image/webp')
+            ? 'image/webp'
+            : 'image/jpeg';
+          const base64Data = img.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+          parts.push({
+            inlineData: { mimeType, data: base64Data },
+          });
+        }
 
         const candidateModels = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
         let rawOutput: string | null = null;
@@ -67,19 +81,7 @@ Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "descr
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  contents: [
-                    {
-                      parts: [
-                        { text: promptText },
-                        {
-                          inlineData: {
-                            mimeType,
-                            data: base64Data,
-                          },
-                        },
-                      ],
-                    },
-                  ],
+                  contents: [{ parts }],
                   generationConfig: {
                     temperature: 0.2,
                     responseMimeType: 'application/json',

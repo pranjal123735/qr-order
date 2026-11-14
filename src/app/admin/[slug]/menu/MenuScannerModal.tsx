@@ -43,7 +43,7 @@ export function MenuScannerModal({
   onSuccess,
 }: MenuScannerModalProps) {
   const [activeTab, setActiveTab] = useState<'PHOTO' | 'TEXT' | 'PRESET'>('PHOTO');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [rawText, setRawText] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanStep, setScanStep] = useState('');
@@ -59,8 +59,6 @@ export function MenuScannerModal({
       const saved = localStorage.getItem('gemini_api_key');
       if (saved) {
         setGeminiApiKey(saved);
-      } else {
-        setGeminiApiKey('AIzaSyB5Aw4K_sngyOqU2vFFNvnECoFhbaLy5xM');
       }
     }
   }, []);
@@ -86,42 +84,57 @@ export function MenuScannerModal({
 
   if (!isOpen) return null;
 
-  // Handle image file selection
+  // Handle image file selection (supports multiple files)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    Promise.all(
+      files.map(
+        (file) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          })
+      )
+    ).then((newImgs) => {
+      setSelectedImages((prev) => [...prev, ...newImgs]);
+    });
+
+    if (e.target) e.target.value = '';
+  };
+
+  const handleRemoveSelectedImage = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Perform AI scan
-  const handleStartScan = async (params: { presetId?: string; imageBase64?: string; text?: string }) => {
+  const handleStartScan = async (params: { presetId?: string; imagesBase64?: string[]; text?: string }) => {
     try {
       setIsScanning(true);
       setStatusMessage(null);
-      setScanStep('Analyzing menu photo layout and typography...');
+      setScanStep('Analyzing menu pages and typography...');
 
       const timer1 = setTimeout(() => {
-        setScanStep('Detecting dishes, categories & prices...');
+        setScanStep('Detecting dishes, categories & prices across all pages...');
       }, 700);
 
       const timer2 = setTimeout(() => {
-        setScanStep('Matching dishes with appetizing web food photos...');
+        setScanStep('Matching authentic food photos for each dish...');
       }, 1400);
+
+      const imgsToSend = params.imagesBase64 || (selectedImages.length > 0 ? selectedImages : undefined);
 
       const response = await fetch('/api/menu/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           presetId: params.presetId,
-          imageBase64: params.imageBase64,
+          imagesBase64: imgsToSend,
           rawText: params.text,
           currency: (!restaurant.currency || restaurant.currency === '$') ? '₹' : restaurant.currency,
-          clientApiKey: (geminiApiKey || 'AIzaSyB5Aw4K_sngyOqU2vFFNvnECoFhbaLy5xM').trim(),
+          clientApiKey: geminiApiKey.trim() || undefined,
         }),
       });
 
@@ -399,6 +412,7 @@ export function MenuScannerModal({
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
                     onChange={handleFileChange}
                   />
@@ -411,54 +425,93 @@ export function MenuScannerModal({
                     onChange={handleFileChange}
                   />
 
-                  {/* Dropzone / Preview */}
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-3xl p-8 text-center cursor-pointer transition relative overflow-hidden group ${
-                      selectedImage
-                        ? 'border-amber-500/60 bg-amber-500/5'
-                        : 'border-stone-800 hover:border-amber-500/50 bg-stone-950/60 hover:bg-stone-950'
-                    }`}
-                  >
-                    {selectedImage ? (
-                      <div className="space-y-4">
-                        <div className="relative max-h-64 mx-auto rounded-2xl overflow-hidden border border-stone-800 shadow-xl inline-block">
-                          <img
-                            src={selectedImage}
-                            alt="Uploaded Menu"
-                            className="max-h-64 object-contain mx-auto"
-                          />
-                          {isScanning && (
-                            <div className="absolute inset-0 bg-stone-950/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                              <div className="w-12 h-12 rounded-full border-4 border-amber-500 border-t-transparent animate-spin" />
-                              <p className="text-xs font-black text-amber-400 px-4 py-1.5 bg-stone-900 rounded-full border border-amber-500/30">
-                                {scanStep}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs text-stone-400">
-                          Click to choose a different photo
-                        </p>
+                  {/* Dropzone / Preview Gallery */}
+                  {selectedImages.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs text-stone-400">
+                        <span className="font-bold text-white flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span>{selectedImages.length} {selectedImages.length === 1 ? 'Page Selected' : 'Pages Ready for Multi-Page Scan'}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedImages([])}
+                          className="text-[11px] text-rose-400 hover:underline"
+                        >
+                          Clear All Pages
+                        </button>
                       </div>
-                    ) : (
+
+                      {/* Image Thumbnails Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {selectedImages.map((img, idx) => (
+                          <div
+                            key={idx}
+                            className="relative h-36 rounded-2xl overflow-hidden border border-amber-500/40 bg-stone-950 shadow-md group"
+                          >
+                            <img
+                              src={img}
+                              alt={`Menu Page ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-black bg-stone-950/80 text-amber-400 border border-stone-700">
+                              Page {idx + 1}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveSelectedImage(idx);
+                              }}
+                              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white flex items-center justify-center transition shadow"
+                              title="Remove page"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Add More Pages Card */}
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-36 rounded-2xl border-2 border-dashed border-stone-800 hover:border-amber-500/60 bg-stone-950/50 hover:bg-stone-950 cursor-pointer flex flex-col items-center justify-center gap-2 text-stone-400 hover:text-white transition group"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-stone-850 group-hover:bg-amber-500/20 text-stone-400 group-hover:text-amber-400 flex items-center justify-center transition">
+                            <Plus className="w-4 h-4" />
+                          </div>
+                          <span className="text-xs font-bold">+ Add Page</span>
+                        </div>
+                      </div>
+
+                      {isScanning && (
+                        <div className="p-4 rounded-2xl bg-stone-950/90 border border-amber-500/30 flex items-center justify-center gap-3">
+                          <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+                          <span className="text-xs font-bold text-amber-400">{scanStep}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-stone-800 hover:border-amber-500/50 bg-stone-950/60 hover:bg-stone-950 rounded-3xl p-8 text-center cursor-pointer transition relative overflow-hidden group"
+                    >
                       <div className="space-y-3">
                         <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 mx-auto flex items-center justify-center group-hover:scale-110 transition">
                           <Upload className="w-7 h-7" />
                         </div>
                         <div>
                           <p className="font-bold text-sm text-white">
-                            Upload or drag & drop photo of your menu card
+                            Upload photos of your menu card (Multiple pages supported)
                           </p>
                           <p className="text-xs text-stone-500 mt-1">
-                            Supports JPG, PNG, WEBP from phone camera or gallery
+                            Select one or multiple photos (JPG, PNG, WEBP) from phone or gallery
                           </p>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
-                  {/* Camera Snap Button */}
+                  {/* Camera Snap & Scan Actions */}
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
@@ -466,13 +519,13 @@ export function MenuScannerModal({
                       className="flex-1 py-3 px-4 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2"
                     >
                       <Camera className="w-4 h-4 text-amber-400" />
-                      <span>Take Photo with Camera</span>
+                      <span>{selectedImages.length > 0 ? '+ Snap Another Page' : 'Take Photo with Camera'}</span>
                     </button>
 
                     <button
                       type="button"
-                      disabled={!selectedImage || isScanning}
-                      onClick={() => handleStartScan({ imageBase64: selectedImage || undefined })}
+                      disabled={selectedImages.length === 0 || isScanning}
+                      onClick={() => handleStartScan({ imagesBase64: selectedImages })}
                       className="flex-1 py-3 px-6 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-black rounded-2xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
                     >
                       {isScanning ? (
@@ -483,7 +536,11 @@ export function MenuScannerModal({
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4" />
-                          <span>Scan & Extract Dishes</span>
+                          <span>
+                            {selectedImages.length > 1
+                              ? `Scan All (${selectedImages.length}) Pages`
+                              : 'Scan & Extract Dishes'}
+                          </span>
                         </>
                       )}
                     </button>
