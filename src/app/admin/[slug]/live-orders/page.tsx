@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Order, OrderStatus, Restaurant, ItemPrepStatus, ServiceCall } from '@/types/database';
+import { Order, OrderStatus, Restaurant, ItemPrepStatus, ServiceCall, OrderItem } from '@/types/database';
 import { DataStore } from '@/lib/store';
 import { audioManager } from '@/lib/audio';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
@@ -105,6 +105,93 @@ const ALL_KITCHEN_STATUS_OPTIONS: Array<{
   },
 ];
 
+interface DishStatusChangeRequest {
+  orderId: string;
+  dishId: string;
+  dishName: string;
+  tableNumber: number;
+  currentStatus: ItemPrepStatus;
+  newStatus: ItemPrepStatus;
+  actionTitle: string;
+}
+
+interface DishPickerState {
+  orderId: string;
+  dishId: string;
+  dishName: string;
+  tableNumber: number;
+  currentStatus: ItemPrepStatus;
+}
+
+const ALL_DISH_STATUS_OPTIONS: Array<{
+  status: ItemPrepStatus;
+  label: string;
+  hindiLabel: string;
+  desc: string;
+  icon: string;
+  badgeClass: string;
+}> = [
+  {
+    status: 'COOKING',
+    label: 'Cooking on Stove',
+    hindiLabel: 'चूल्हे पर पक रहा है',
+    desc: 'Actively preparing & cooking on stove',
+    icon: '🍳',
+    badgeClass: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
+  },
+  {
+    status: 'ON_THE_WAY',
+    label: 'Food Cooked • On the Way',
+    hindiLabel: 'तैयार • रास्ते में है',
+    desc: 'Dish finished, server carrying to table',
+    icon: '🚚',
+    badgeClass: 'bg-orange-500/20 text-orange-400 border-orange-500/40',
+  },
+  {
+    status: 'SERVED',
+    label: 'Served to Table',
+    hindiLabel: 'टेबल पर परोसा गया',
+    desc: 'Delivered and placed on diner table',
+    icon: '🍽️',
+    badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
+  },
+  {
+    status: 'REJECTED',
+    label: 'Reject Dish (Out of Stock)',
+    hindiLabel: 'अस्वीकृत / समाप्त',
+    desc: 'Out of stock or cannot be prepared',
+    icon: '❌',
+    badgeClass: 'bg-rose-500/20 text-rose-400 border-rose-500/40',
+  },
+  {
+    status: 'QUEUED',
+    label: 'In Queue (Pending)',
+    hindiLabel: 'रसोई कतार में',
+    desc: 'Reset or place back into cooking queue',
+    icon: '⏳',
+    badgeClass: 'bg-neutral-800 text-stone-400 border-neutral-700',
+  },
+];
+
+function getDishStatusBadgeInfo(status?: ItemPrepStatus) {
+  switch (status) {
+    case 'COOKING':
+      return { label: 'Cooking', hindi: 'चूल्हे पर', icon: '🍳', color: 'bg-amber-500/20 text-amber-400 border-amber-500/40' };
+    case 'ON_THE_WAY':
+      return { label: 'On the Way', hindi: 'रास्ते में', icon: '🚚', color: 'bg-orange-500/20 text-orange-400 border-orange-500/40' };
+    case 'SERVED':
+      return { label: 'Served', hindi: 'परोसा गया', icon: '🍽️', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' };
+    case 'REJECTED':
+      return { label: 'Rejected', hindi: 'अस्वीकृत', icon: '❌', color: 'bg-rose-500/20 text-rose-400 border-rose-500/40' };
+    case 'READY':
+      return { label: 'Ready', hindi: 'तैयार', icon: '✓', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' };
+    case 'PENDING':
+    case 'QUEUED':
+    default:
+      return { label: 'In Queue', hindi: 'कतार में', icon: '⏳', color: 'bg-neutral-800 text-stone-400 border-neutral-700' };
+  }
+}
+
 function getStatusBadgeInfo(status: OrderStatus) {
   switch (status) {
     case 'PENDING':
@@ -174,6 +261,47 @@ function KitchenLiveOrdersContent() {
   const [confirmDialog, setConfirmDialog] = useState<StatusChangeRequest | null>(null);
   const [statusPickerOrder, setStatusPickerOrder] = useState<Order | null>(null);
 
+  // Dish-level confirmation modal & status picker state
+  const [dishConfirmDialog, setDishConfirmDialog] = useState<DishStatusChangeRequest | null>(null);
+  const [dishPicker, setDishPicker] = useState<DishPickerState | null>(null);
+
+  // Anti-Abuse: Manager Snoozed Tables map (table_number -> expire timestamp)
+  const [snoozedTables, setSnoozedTables] = useState<Record<number, number>>({});
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`tablebite_snoozed_${slug}`);
+      if (stored) {
+        setSnoozedTables(JSON.parse(stored));
+      }
+    } catch {
+      // ignore
+    }
+  }, [slug]);
+
+  const isTableSnoozed = (tbl: number) => {
+    const expire = snoozedTables[tbl];
+    return Boolean(expire && expire > Date.now());
+  };
+
+  const handleSnoozeTable = (tbl: number) => {
+    const until = Date.now() + 5 * 60 * 1000; // 5 minutes snooze
+    setSnoozedTables(prev => {
+      const next = { ...prev, [tbl]: until };
+      try { localStorage.setItem(`tablebite_snoozed_${slug}`, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const handleUnsnoozeTable = (tbl: number) => {
+    setSnoozedTables(prev => {
+      const next = { ...prev };
+      delete next[tbl];
+      try { localStorage.setItem(`tablebite_snoozed_${slug}`, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
   // Auto-unlock audio and speech on any initial interaction anywhere on screen
   useEffect(() => {
     const handleUserInteraction = () => {
@@ -214,9 +342,11 @@ function KitchenLiveOrdersContent() {
       const newCalls = pendingCalls.filter(c => !knownCallIdsRef.current.has(c.id));
 
       if (shouldChime && audioEnabled) {
-        if (newCalls.length > 0) {
+        // Filter out snoozed tables from voice announcements and bell rings
+        const eligibleCalls = newCalls.filter(c => !isTableSnoozed(c.table_number));
+        if (eligibleCalls.length > 0) {
           // Play desk bell AND speak the latest service call announcement
-          const latestCall = newCalls[0];
+          const latestCall = eligibleCalls[0];
           const speakText = getAnnouncementText(latestCall);
           if (speechEnabled) {
             audioManager.ringAndAnnounce(speakText);
@@ -308,6 +438,40 @@ function KitchenLiveOrdersContent() {
     setCheckedDishIds(prev => ({ ...prev, [dishId]: nextStatus === 'READY' }));
     await DataStore.updateOrderItemStatus(orderId, dishId, nextStatus);
     fetchOrders(false);
+  };
+
+  const promptDishStatusChange = (
+    order: Order,
+    item: OrderItem,
+    newStatus: ItemPrepStatus,
+    actionTitle?: string
+  ) => {
+    const currentStatus = item.item_status || (checkedDishIds[item.id] || item.is_prepared ? 'READY' : (order.status === 'PENDING' ? 'PENDING' : 'QUEUED'));
+    setDishConfirmDialog({
+      orderId: order.id,
+      dishId: item.id,
+      dishName: item.item_name,
+      tableNumber: order.table_number,
+      currentStatus,
+      newStatus,
+      actionTitle: actionTitle || `Set to ${getDishStatusBadgeInfo(newStatus).label}`,
+    });
+  };
+
+  const confirmAndUpdateDishStatus = async () => {
+    if (!dishConfirmDialog) return;
+    const { orderId, dishId, newStatus } = dishConfirmDialog;
+    setDishConfirmDialog(null);
+    setDishPicker(null);
+
+    setCheckedDishIds(prev => ({ ...prev, [dishId]: newStatus === 'SERVED' || newStatus === 'READY' }));
+    await DataStore.updateOrderItemStatus(orderId, dishId, newStatus);
+    if (newStatus === 'ON_THE_WAY' || newStatus === 'SERVED') {
+      audioManager.playSuccessChime();
+    } else if (newStatus === 'REJECTED') {
+      audioManager.playCancelTone();
+    }
+    await fetchOrders(false);
   };
 
   const promptStatusChange = (order: Order, newStatus: OrderStatus, actionTitle?: string) => {
@@ -666,7 +830,7 @@ function KitchenLiveOrdersContent() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
                       <button
                         type="button"
                         onClick={() => {
@@ -681,10 +845,32 @@ function KitchenLiveOrdersContent() {
                         <span className="hidden sm:inline">Speak</span>
                       </button>
 
+                      {isTableSnoozed(call.table_number) ? (
+                        <button
+                          type="button"
+                          onClick={() => handleUnsnoozeTable(call.table_number)}
+                          className="py-2 px-2.5 bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border border-rose-500/40 font-bold text-xs rounded-lg transition active:scale-95 flex items-center gap-1 shrink-0"
+                          title="Unsnooze table audio alerts"
+                        >
+                          <BellOff className="w-3.5 h-3.5 text-rose-400" />
+                          <span>Unsnooze</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSnoozeTable(call.table_number)}
+                          className="py-2 px-2.5 bg-neutral-800 hover:bg-neutral-750 text-stone-400 hover:text-stone-200 font-bold text-xs rounded-lg border border-neutral-700 transition active:scale-95 flex items-center gap-1 shrink-0"
+                          title={`Snooze audio alerts from Table #${call.table_number} for 5 minutes`}
+                        >
+                          <BellOff className="w-3.5 h-3.5 text-stone-400" />
+                          <span className="hidden sm:inline">Snooze (5m)</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => handleResolveCall(call.id)}
-                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-sm transition active:scale-98 flex items-center justify-center gap-1.5"
+                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-sm transition active:scale-98 flex items-center justify-center gap-1.5 min-w-[120px]"
                       >
                         <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                         <span>Mark Attended / Resolved</span>
@@ -774,43 +960,38 @@ function KitchenLiveOrdersContent() {
                       {order.items?.map((item) => {
                         const isChecked = !!(checkedDishIds[item.id] || item.is_prepared);
                         const itemStatus: ItemPrepStatus = item.item_status || (isChecked ? 'READY' : (isPending ? 'PENDING' : 'QUEUED'));
+                        const badgeInfo = getDishStatusBadgeInfo(itemStatus);
+                        const isRejected = itemStatus === 'REJECTED';
 
                         return (
                           <div
                             key={item.id}
-                            className={`py-3 first:pt-0 last:pb-0 rounded-xl transition ${
-                              isChecked ? 'opacity-70' : 'hover:bg-neutral-850/40'
+                            className={`py-3 first:pt-0 last:pb-0 rounded-xl transition space-y-2 ${
+                              isRejected 
+                                ? 'bg-rose-950/20 border border-rose-900/30 p-2.5 rounded-2xl'
+                                : isChecked 
+                                ? 'opacity-80' 
+                                : 'hover:bg-neutral-850/40'
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                {/* Clean Checkbox to toggle Ready */}
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleDishChecked(order.id, item.id, isChecked);
-                                  }}
-                                  className={`w-5 h-5 rounded-lg flex items-center justify-center border transition flex-shrink-0 cursor-pointer ${
-                                    isChecked
-                                      ? 'bg-emerald-500 border-emerald-500 text-neutral-950'
-                                      : 'border-neutral-700 bg-neutral-950 hover:border-amber-500'
-                                  }`}
-                                  title="Check off as Ready"
-                                >
-                                  {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                                </button>
-
                                 {/* Quantity Pill */}
-                                <span className="px-2 py-0.5 bg-neutral-800 text-amber-400 font-black text-xs rounded-md flex-shrink-0">
+                                <span className={`px-2 py-0.5 font-black text-xs rounded-md flex-shrink-0 ${
+                                  isRejected ? 'bg-rose-950 text-rose-400' : 'bg-neutral-800 text-amber-400'
+                                }`}>
                                   {item.quantity}×
                                 </span>
 
                                 {/* Dish Name with Hindi translation */}
                                 <div className="flex-1 min-w-0">
                                   <span
-                                    className={`font-bold text-sm text-white block leading-snug ${
-                                      isChecked ? 'line-through text-stone-400' : ''
+                                    className={`font-bold text-sm block leading-snug ${
+                                      isRejected 
+                                        ? 'line-through text-rose-400/80' 
+                                        : isChecked 
+                                        ? 'line-through text-stone-400' 
+                                        : 'text-white'
                                     }`}
                                   >
                                     {item.item_name}
@@ -820,37 +1001,34 @@ function KitchenLiveOrdersContent() {
                                       {translateFoodName(item.item_name, true)}
                                     </span>
                                   )}
+                                  {isRejected && (
+                                    <span className="text-[10px] text-rose-400 font-bold block mt-0.5">
+                                      ❌ Out of Stock / Declined
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
                               <div className="flex items-center gap-2 shrink-0">
-                                {/* Interactive Status Badge (Tap to cycle status: Queued -> Cooking -> Ready) */}
-                                {isPending ? (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-800 text-stone-400 border border-neutral-700">
-                                    🕒 Awaiting Accept
-                                  </span>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => cycleDishStatus(order.id, item.id, item.item_status, item.is_prepared)}
-                                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-black transition active:scale-95 cursor-pointer flex items-center gap-1 ${
-                                      itemStatus === 'READY'
-                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                        : itemStatus === 'COOKING'
-                                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse'
-                                          : 'bg-stone-850 text-stone-400 border border-stone-750 hover:border-stone-600'
-                                    }`}
-                                    title="Click to cycle: Queued -> Cooking -> Ready"
-                                  >
-                                    {itemStatus === 'READY' && <><span>✓</span><span>Ready</span></>}
-                                    {itemStatus === 'COOKING' && <><span>🍳</span><span>Cooking</span></>}
-                                    {itemStatus === 'QUEUED' && <><span>⏳</span><span>Queued</span></>}
-                                    {itemStatus === 'PENDING' && <><span>🕒</span><span>Queued</span></>}
-                                  </button>
-                                )}
+                                {/* Clickable Status Badge (Tap to open Dish Status Picker) */}
+                                <button
+                                  type="button"
+                                  onClick={() => setDishPicker({
+                                    orderId: order.id,
+                                    dishId: item.id,
+                                    dishName: item.item_name,
+                                    tableNumber: order.table_number,
+                                    currentStatus: itemStatus,
+                                  })}
+                                  className={`px-2.5 py-1 rounded-full text-[10px] font-black border transition active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-sm ${badgeInfo.color}`}
+                                  title="Click to change this food item's status"
+                                >
+                                  <span>{badgeInfo.icon}</span>
+                                  <span>{badgeInfo.label}</span>
+                                </button>
 
                                 {/* Price in Rupee */}
-                                <span className="text-xs font-mono font-semibold text-stone-400">
+                                <span className={`text-xs font-mono font-semibold ${isRejected ? 'line-through text-rose-400/60' : 'text-stone-400'}`}>
                                   {currency}{(item.item_price * item.quantity).toFixed(0)}
                                 </span>
                               </div>
@@ -858,10 +1036,78 @@ function KitchenLiveOrdersContent() {
 
                             {/* Refined Cooking Note Callout */}
                             {item.notes && (
-                              <div className="mt-1.5 ml-8 px-2.5 py-1 bg-amber-500/10 border-l-2 border-amber-500 rounded-r-lg text-xs text-amber-300 font-medium">
+                              <div className="ml-8 px-2.5 py-1 bg-amber-500/10 border-l-2 border-amber-500 rounded-r-lg text-xs text-amber-300 font-medium">
                                 <span>Note: {item.notes}</span>
                               </div>
                             )}
+
+                            {/* Quick Action Status Buttons for This Dish */}
+                            <div className="flex items-center gap-1.5 pt-0.5 pl-8 flex-wrap">
+                              <span className="text-[10px] text-stone-500 font-bold mr-1">Set:</span>
+                              
+                              <button
+                                type="button"
+                                onClick={() => promptDishStatusChange(order, item, 'COOKING', 'Mark as Cooking')}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition active:scale-95 ${
+                                  itemStatus === 'COOKING'
+                                    ? 'bg-amber-500 text-neutral-950 border-amber-400 ring-1 ring-amber-400 font-black'
+                                    : 'bg-neutral-850 hover:bg-neutral-800 text-amber-300/80 border-neutral-750'
+                                }`}
+                              >
+                                🍳 Cook
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => promptDishStatusChange(order, item, 'ON_THE_WAY', 'Mark as On the Way')}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition active:scale-95 ${
+                                  itemStatus === 'ON_THE_WAY'
+                                    ? 'bg-orange-500 text-neutral-950 border-orange-400 ring-1 ring-orange-400 font-black'
+                                    : 'bg-neutral-850 hover:bg-neutral-800 text-orange-300/80 border-neutral-750'
+                                }`}
+                              >
+                                🚚 On Way
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => promptDishStatusChange(order, item, 'SERVED', 'Mark as Served')}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition active:scale-95 ${
+                                  itemStatus === 'SERVED'
+                                    ? 'bg-emerald-500 text-neutral-950 border-emerald-400 ring-1 ring-emerald-400 font-black'
+                                    : 'bg-neutral-850 hover:bg-neutral-800 text-emerald-300/80 border-neutral-750'
+                                }`}
+                              >
+                                🍽️ Served
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => promptDishStatusChange(order, item, 'REJECTED', 'Reject this item')}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition active:scale-95 ${
+                                  itemStatus === 'REJECTED'
+                                    ? 'bg-rose-500 text-white border-rose-400 ring-1 ring-rose-400 font-black'
+                                    : 'bg-neutral-850 hover:bg-neutral-800 text-rose-300/80 border-neutral-750'
+                                }`}
+                              >
+                                ❌ Reject
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setDishPicker({
+                                  orderId: order.id,
+                                  dishId: item.id,
+                                  dishName: item.item_name,
+                                  tableNumber: order.table_number,
+                                  currentStatus: itemStatus,
+                                })}
+                                className="px-1.5 py-0.5 text-[10px] font-bold rounded-lg bg-neutral-800 hover:bg-neutral-750 text-stone-400 hover:text-white border border-neutral-700 transition"
+                                title="Open full dish status menu"
+                              >
+                                More...
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
@@ -1123,6 +1369,154 @@ function KitchenLiveOrdersContent() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-xs text-white">{opt.label}</span>
+                          {isCurrent && (
+                            <span className="px-1.5 py-0.2 text-[9px] bg-amber-500 text-neutral-950 font-black rounded-full uppercase">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-stone-400 mt-0.5">{opt.desc}</p>
+                      </div>
+                    </div>
+
+                    <span className="text-xs text-stone-500 font-bold group-hover:text-amber-400 transition">
+                      Select &rarr;
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Dish Status Change */}
+      {dishConfirmDialog && (
+        <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-neutral-900 border border-neutral-700/80 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-md border ${
+              dishConfirmDialog.newStatus === 'REJECTED'
+                ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
+                : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+            }`}>
+              {getDishStatusBadgeInfo(dishConfirmDialog.newStatus).icon}
+            </div>
+
+            <div>
+              <h3 className="font-black text-lg text-white">
+                {dishConfirmDialog.newStatus === 'REJECTED' ? 'Reject this Food Item?' : 'Update Dish Status?'}
+              </h3>
+              <p className="text-xs text-amber-400 font-bold mt-1">
+                Table #{dishConfirmDialog.tableNumber} • {dishConfirmDialog.dishName}
+              </p>
+              {translateFoodName(dishConfirmDialog.dishName, true) !== dishConfirmDialog.dishName && (
+                <p className="text-[11px] text-stone-400 mt-0.5">
+                  ({translateFoodName(dishConfirmDialog.dishName, true)})
+                </p>
+              )}
+            </div>
+
+            {/* Transition Visual */}
+            <div className="p-3 bg-neutral-950 rounded-2xl border border-neutral-800 flex items-center justify-center gap-2 text-xs font-bold">
+              <span className={`px-2.5 py-1 rounded-lg border ${getDishStatusBadgeInfo(dishConfirmDialog.currentStatus).color}`}>
+                {getDishStatusBadgeInfo(dishConfirmDialog.currentStatus).icon} {getDishStatusBadgeInfo(dishConfirmDialog.currentStatus).label}
+              </span>
+              <ArrowRight className="w-4 h-4 text-stone-500 shrink-0" />
+              <span className={`px-2.5 py-1 rounded-lg border ${getDishStatusBadgeInfo(dishConfirmDialog.newStatus).color}`}>
+                {getDishStatusBadgeInfo(dishConfirmDialog.newStatus).icon} {getDishStatusBadgeInfo(dishConfirmDialog.newStatus).label}
+              </span>
+            </div>
+
+            <p className="text-[11px] text-stone-400 leading-relaxed">
+              {dishConfirmDialog.newStatus === 'REJECTED'
+                ? 'The diner will immediately see that this dish was declined/sold out.'
+                : 'The diner will instantly see this dish update on their tracking screen.'}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setDishConfirmDialog(null)}
+                className="py-3 px-4 bg-neutral-800 hover:bg-neutral-750 text-stone-300 font-bold text-xs rounded-xl border border-neutral-700 transition active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmAndUpdateDishStatus}
+                className={`py-3 px-4 font-black text-xs rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 ${
+                  dishConfirmDialog.newStatus === 'REJECTED'
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                    : 'bg-amber-500 hover:bg-amber-400 text-neutral-950'
+                }`}
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Confirm</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dish Status Picker Modal */}
+      {dishPicker && (
+        <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-neutral-900 border border-neutral-700/80 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+                  🍽️
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-white">
+                    Update Dish Status
+                  </h3>
+                  <p className="text-xs text-amber-400 font-bold truncate max-w-[220px]">
+                    Table #{dishPicker.tableNumber} • {dishPicker.dishName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDishPicker(null)}
+                className="p-1.5 rounded-lg bg-neutral-800 text-stone-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-300">
+              Select status for <strong className="text-white">{dishPicker.dishName}</strong>:
+            </p>
+
+            <div className="space-y-2">
+              {ALL_DISH_STATUS_OPTIONS.map((opt) => {
+                const isCurrent = dishPicker.currentStatus === opt.status;
+
+                return (
+                  <button
+                    key={opt.status}
+                    type="button"
+                    onClick={() => {
+                      const order = orders.find(o => o.id === dishPicker.orderId);
+                      const item = order?.items?.find(it => it.id === dishPicker.dishId);
+                      if (order && item) {
+                        setDishPicker(null);
+                        promptDishStatusChange(order, item, opt.status, `Set to ${opt.label}`);
+                      }
+                    }}
+                    className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-all group ${
+                      isCurrent
+                        ? 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40'
+                        : 'bg-neutral-950/70 border-neutral-800 hover:bg-neutral-850 hover:border-neutral-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{opt.icon}</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-white">{opt.label}</span>
+                          <span className="text-[11px] text-amber-400/80 font-normal">({opt.hindiLabel})</span>
                           {isCurrent && (
                             <span className="px-1.5 py-0.2 text-[9px] bg-amber-500 text-neutral-950 font-black rounded-full uppercase">
                               Current

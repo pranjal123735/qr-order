@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bell, 
   BellRing, 
@@ -11,7 +11,8 @@ import {
   Droplets, 
   UserCheck, 
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Clock
 } from 'lucide-react';
 import { ServiceCallType } from '@/types/database';
 import { DataStore } from '@/lib/store';
@@ -42,6 +43,30 @@ export function TableServiceBellModal({
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
+
+  useEffect(() => {
+    const checkCooldown = () => {
+      try {
+        const stored = localStorage.getItem(`tablebite_bell_cooldown_table_${tableNumber}`);
+        if (stored) {
+          const exp = parseInt(stored, 10);
+          const diff = Math.ceil((exp - Date.now()) / 1000);
+          if (diff > 0) {
+            setCooldownSeconds(diff);
+            return;
+          }
+        }
+        setCooldownSeconds(0);
+      } catch {
+        setCooldownSeconds(0);
+      }
+    };
+
+    checkCooldown();
+    const interval = setInterval(checkCooldown, 1000);
+    return () => clearInterval(interval);
+  }, [tableNumber, isOpen]);
 
   if (!isOpen) return null;
 
@@ -84,6 +109,7 @@ export function TableServiceBellModal({
   ];
 
   const handleRingBell = async () => {
+    if (cooldownSeconds > 0) return;
     try {
       setIsSubmitting(true);
       // Play desk bell chime and announce aloud what was selected
@@ -101,6 +127,15 @@ export function TableServiceBellModal({
         announcement = `Service bell rung for Table ${tableNumber}: Calling waiter to table.`;
       }
       audioManager.ringAndAnnounce(announcement);
+
+      // Start 60-second cooldown timer
+      const cooldownUntil = Date.now() + 60000;
+      try {
+        localStorage.setItem(`tablebite_bell_cooldown_table_${tableNumber}`, cooldownUntil.toString());
+        setCooldownSeconds(60);
+      } catch {
+        // ignore
+      }
 
       await DataStore.createServiceCall({
         restaurant_id: restaurantId,
@@ -234,16 +269,44 @@ export function TableServiceBellModal({
                 />
               </div>
 
+              {/* Active Cooldown / Anti-Spam Notice */}
+              {cooldownSeconds > 0 && (
+                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-300 flex items-start gap-2.5 animate-in fade-in">
+                  <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5 animate-spin" />
+                  <div className="text-xs">
+                    <p className="font-black text-amber-950">
+                      Staff Already Notified for Table #{tableNumber}
+                    </p>
+                    <p className="text-stone-600 text-[11px] mt-0.5">
+                      To prevent kitchen disruption, you can ring again in <strong>{cooldownSeconds}s</strong>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Action Button */}
               <button
-                disabled={isSubmitting}
+                disabled={isSubmitting || cooldownSeconds > 0}
                 onClick={handleRingBell}
-                className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs rounded-2xl shadow-lg shadow-amber-500/25 transition active:scale-98 flex items-center justify-center gap-2"
+                className={`w-full py-4 text-xs font-black rounded-2xl transition flex items-center justify-center gap-2 ${
+                  cooldownSeconds > 0
+                    ? 'bg-stone-200 text-stone-500 cursor-not-allowed border border-stone-300'
+                    : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 shadow-lg shadow-amber-500/25 active:scale-98'
+                }`}
               >
-                <Bell className="w-4 h-4 stroke-[2.5]" />
-                <span>
-                  {isSubmitting ? t.bell_ringing : `${t.btn_ring_bell} (Table #${tableNumber})`}
-                </span>
+                {cooldownSeconds > 0 ? (
+                  <>
+                    <Clock className="w-4 h-4 text-stone-500" />
+                    <span>Ringing Cooldown ({cooldownSeconds}s remaining)</span>
+                  </>
+                ) : (
+                  <>
+                    <Bell className="w-4 h-4 stroke-[2.5]" />
+                    <span>
+                      {isSubmitting ? t.bell_ringing : `${t.btn_ring_bell} (Table #${tableNumber})`}
+                    </span>
+                  </>
+                )}
               </button>
             </>
           )}

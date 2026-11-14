@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bell, 
   BellRing, 
@@ -43,6 +43,33 @@ export function FoodInfoBellModal({
   const [customInquiry, setCustomInquiry] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
+
+  const dishCooldownKey = item ? `tablebite_dish_cooldown_${item.id || item.item_name}` : '';
+
+  useEffect(() => {
+    if (!dishCooldownKey) return;
+    const checkDishCooldown = () => {
+      try {
+        const stored = localStorage.getItem(dishCooldownKey);
+        if (stored) {
+          const exp = parseInt(stored, 10);
+          const diff = Math.ceil((exp - Date.now()) / 1000);
+          if (diff > 0) {
+            setCooldownSeconds(diff);
+            return;
+          }
+        }
+        setCooldownSeconds(0);
+      } catch {
+        setCooldownSeconds(0);
+      }
+    };
+
+    checkDishCooldown();
+    const interval = setInterval(checkDishCooldown, 1000);
+    return () => clearInterval(interval);
+  }, [dishCooldownKey, isOpen]);
 
   if (!isOpen || !item) return null;
 
@@ -65,11 +92,21 @@ export function FoodInfoBellModal({
   ];
 
   const handleRingKitchen = async () => {
+    if (cooldownSeconds > 0) return;
     try {
       setIsSubmitting(true);
       // Play audio chime and speak what dish was selected
       await audioManager.unlockAudio();
       audioManager.ringAndAnnounce(`Kitchen bell rung for ${item.item_name}. Table ${tableNumber}.`);
+
+      // 90 second cooldown for this dish
+      const cooldownUntil = Date.now() + 90000;
+      try {
+        localStorage.setItem(dishCooldownKey, cooldownUntil.toString());
+        setCooldownSeconds(90);
+      } catch {
+        // ignore
+      }
 
       const activeInquiryObj = quickInquiries.find(q => q.id === selectedQuickInquiry);
       const chosenText = activeInquiryObj ? activeInquiryObj.text : '';
@@ -246,16 +283,44 @@ export function FoodInfoBellModal({
                 />
               </div>
 
+              {/* Anti-Spam / Dish Cooldown Notice */}
+              {cooldownSeconds > 0 && (
+                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-300 flex items-start gap-2.5 animate-in fade-in">
+                  <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5 animate-spin" />
+                  <div className="text-xs">
+                    <p className="font-black text-amber-950">
+                      Chef Already Alerted for {displayName}
+                    </p>
+                    <p className="text-stone-600 text-[11px] mt-0.5">
+                      Dish is actively cooking on the stove. You can inquire again in <strong>{cooldownSeconds}s</strong>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Ring Bell CTA Button */}
               <button
-                disabled={isSubmitting}
+                disabled={isSubmitting || cooldownSeconds > 0}
                 onClick={handleRingKitchen}
-                className="w-full py-4 bg-gradient-to-r from-amber-500 via-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs rounded-2xl shadow-lg shadow-amber-500/25 transition active:scale-98 flex items-center justify-center gap-2"
+                className={`w-full py-4 text-xs font-black rounded-2xl transition flex items-center justify-center gap-2 ${
+                  cooldownSeconds > 0
+                    ? 'bg-stone-200 text-stone-500 cursor-not-allowed border border-stone-300'
+                    : 'bg-gradient-to-r from-amber-500 via-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 shadow-lg shadow-amber-500/25 active:scale-98'
+                }`}
               >
-                <Bell className="w-4 h-4 stroke-[2.5]" />
-                <span>
-                  {isSubmitting ? t.bell_ringing : `${t.btn_send_dish_ring} 🛎️`}
-                </span>
+                {cooldownSeconds > 0 ? (
+                  <>
+                    <Clock className="w-4 h-4 text-stone-500" />
+                    <span>Inquiry Cooldown ({cooldownSeconds}s left)</span>
+                  </>
+                ) : (
+                  <>
+                    <Bell className="w-4 h-4 stroke-[2.5]" />
+                    <span>
+                      {isSubmitting ? t.bell_ringing : `${t.btn_send_dish_ring} 🛎️`}
+                    </span>
+                  </>
+                )}
               </button>
             </>
           )}

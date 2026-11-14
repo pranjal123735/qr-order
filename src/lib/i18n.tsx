@@ -129,8 +129,13 @@ export interface Translations {
   live_dish_tracker_subtitle: string;
   dish_status_ready: string;
   dish_status_cooking: string;
+  dish_status_on_the_way: string;
+  dish_status_served: string;
+  dish_status_rejected: string;
   dish_status_queued: string;
   dish_status_pending: string;
+  dish_rejected_alert: string;
+  dish_on_the_way_alert: string;
   rate_dish_title: string;
   rate_dish_subtitle: string;
   remark_for_dish: string;
@@ -302,8 +307,13 @@ export const translations: Record<Language, Translations> = {
     live_dish_tracker_subtitle: 'Track each food item as it moves through the kitchen',
     dish_status_ready: 'Cooked & Ready',
     dish_status_cooking: 'Cooking on Stove',
+    dish_status_on_the_way: 'Food Cooked • On the Way',
+    dish_status_served: 'Served at Table',
+    dish_status_rejected: 'Rejected / Out of Stock',
     dish_status_queued: 'In Kitchen Queue',
     dish_status_pending: 'Awaiting Confirmation',
+    dish_rejected_alert: 'Item cancelled by kitchen (unavailable/sold out)',
+    dish_on_the_way_alert: 'Cooked! Arriving at your table shortly',
     rate_dish_title: 'Rate Each Dish & Add Remarks',
     rate_dish_subtitle: 'How did you enjoy each food item? Share your remarks!',
     remark_for_dish: 'Remark for {dish} (e.g. Delicious, crisp, flavorful)...',
@@ -473,8 +483,13 @@ export const translations: Record<Language, Translations> = {
     live_dish_tracker_subtitle: 'किचन में प्रत्येक व्यंजन की लाइव तैयारी ट्रैक करें',
     dish_status_ready: 'पक कर तैयार',
     dish_status_cooking: 'चूल्हे पर पक रहा है',
+    dish_status_on_the_way: 'तैयार • रास्ते में है',
+    dish_status_served: 'टेबल पर परोसा गया',
+    dish_status_rejected: 'अस्वीकृत / अनुपलब्ध',
     dish_status_queued: 'रसोई कतार में',
     dish_status_pending: 'पुष्टि की प्रतीक्षा',
+    dish_rejected_alert: 'किचन द्वारा अस्वीकृत (सामग्री समाप्त)',
+    dish_on_the_way_alert: 'खाना तैयार है! कुछ ही पलों में टेबल पर पहुंच रहा है',
     rate_dish_title: 'प्रत्येक व्यंजन को रेटिंग और टिप्पणी दें',
     rate_dish_subtitle: 'आपको खाना कैसा लगा? अपने विचार साझा करें!',
     remark_for_dish: '{dish} के लिए टिप्पणी (उदा. स्वादिष्ट, कुरकुरा, लाजवाब)...',

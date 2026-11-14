@@ -165,14 +165,46 @@ class AudioManager {
     }
   }
 
-  // Play desk bell chime followed immediately by spoken announcement
+  private lastRingTimestamp: number = 0;
+  private speechQueue: Array<{ text: string; lang: string }> = [];
+  private isProcessingQueue: boolean = false;
+
+  // Play desk bell chime followed by queued, non-overlapping voice announcement
   public ringAndAnnounce(announcement: string, lang = 'en-US') {
     if (this.isMuted) return;
-    this.playServiceBell();
-    // Delay voice slightly so the bell chime resonates first
+
+    // Debounce desk bell chime (max 1 chime per 1.8s) to prevent audio flooding
+    const now = Date.now();
+    if (now - this.lastRingTimestamp > 1800) {
+      this.playServiceBell();
+      this.lastRingTimestamp = now;
+    }
+
+    // Push into sequential announcement queue
+    this.speechQueue.push({ text: announcement, lang });
+    this.processSpeechQueue();
+  }
+
+  private processSpeechQueue() {
+    if (this.isProcessingQueue || this.speechQueue.length === 0) return;
+    this.isProcessingQueue = true;
+
+    const next = this.speechQueue.shift();
+    if (!next) {
+      this.isProcessingQueue = false;
+      return;
+    }
+
+    // Delay slightly so chime rings cleanly first
     setTimeout(() => {
-      this.speak(announcement, lang);
-    }, 700);
+      this.speak(next.text, next.lang);
+
+      // 3.5 seconds pacing between announcements so kitchen staff hears each alert clearly
+      setTimeout(() => {
+        this.isProcessingQueue = false;
+        this.processSpeechQueue();
+      }, 3500);
+    }, 650);
   }
 
   private playTone(ctx: AudioContext, freq: number, startTime: number, duration: number, type: OscillatorType) {

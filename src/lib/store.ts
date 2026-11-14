@@ -550,21 +550,59 @@ export const DataStore = {
     return true;
   },
 
-  // 9b-2. Set precise dish status: 'PENDING' | 'QUEUED' | 'COOKING' | 'READY'
+  // 9b-2. Set precise dish status: 'PENDING' | 'QUEUED' | 'COOKING' | 'READY' | 'ON_THE_WAY' | 'SERVED' | 'REJECTED'
   async updateOrderItemStatus(orderId: string, itemId: string, status: import('@/types/database').ItemPrepStatus): Promise<boolean> {
-    const isPrepared = status === 'READY';
+    const isPrepared = status === 'READY' || status === 'ON_THE_WAY' || status === 'SERVED';
+    
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('order_items')
+          .update({ item_status: status, is_prepared: isPrepared })
+          .eq('id', itemId);
+      } catch (e) {
+        console.warn('Could not update order_items in supabase:', e);
+      }
+    }
+
     const orders = getStored<Order[]>('orders', INITIAL_ORDERS);
+    let newOrderStatus: import('@/types/database').OrderStatus | undefined = undefined;
+
     const updated = orders.map(o => {
       if (o.id !== orderId) return o;
       const updatedItems = o.items?.map(it => 
         it.id === itemId 
           ? { ...it, item_status: status, is_prepared: isPrepared } 
           : it
-      );
-      return { ...o, items: updatedItems, updated_at: new Date().toISOString() };
+      ) || [];
+
+      // Smart auto-adjustment of overall order status based on individual items
+      const nonRejected = updatedItems.filter(it => it.item_status !== 'REJECTED');
+      if (updatedItems.length > 0 && nonRejected.length === 0) {
+        // Every single item was rejected
+        newOrderStatus = 'REJECTED';
+      } else if (nonRejected.length > 0 && nonRejected.every(it => it.item_status === 'SERVED')) {
+        // All non-rejected items have been served
+        newOrderStatus = 'SERVED';
+      } else if (nonRejected.some(it => it.item_status === 'ON_THE_WAY') && ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status)) {
+        // At least one item is on the way
+        newOrderStatus = 'ON_THE_WAY';
+      } else if (nonRejected.some(it => it.item_status === 'COOKING') && ['PENDING', 'CONFIRMED'].includes(o.status)) {
+        // At least one item is cooking
+        newOrderStatus = 'PREPARING';
+      }
+
+      return { 
+        ...o, 
+        items: updatedItems, 
+        status: newOrderStatus || o.status,
+        updated_at: new Date().toISOString() 
+      };
     });
+
     setStored('orders', updated);
     localSync.emit('ORDER_UPDATED', { orderId, itemId, itemStatus: status, isPrepared });
+    localSync.emit('ORDER_STATUS_CHANGED', { orderId, status: newOrderStatus });
     return true;
   },
 
@@ -694,6 +732,23 @@ export const DataStore = {
     item_id?: string;
     notes?: string;
   }): Promise<ServiceCall> {
+    // Anti-Abuse & Deduplication Guard:
+    // If this table already has an active PENDING call of same type (or same dish), reuse it instead of spamming
+    const currentCalls = getStored<ServiceCall[]>('service_calls', []);
+    const existingActive = currentCalls.find(c =>
+      c.restaurant_id === data.restaurant_id &&
+      c.table_number === data.table_number &&
+      c.status === 'PENDING' &&
+      (c.type === data.type || (data.item_id && c.item_id === data.item_id))
+    );
+
+    if (existingActive) {
+      const elapsed = Date.now() - new Date(existingActive.created_at).getTime();
+      if (elapsed < 60000) {
+        return existingActive;
+      }
+    }
+
     const newCall: ServiceCall = {
       id: 'call-' + Math.random().toString(36).substring(2, 9),
       restaurant_id: data.restaurant_id,

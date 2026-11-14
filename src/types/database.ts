@@ -51,7 +51,14 @@ export interface MenuItem {
   created_at?: string;
 }
 
-export type ItemPrepStatus = 'PENDING' | 'QUEUED' | 'COOKING' | 'READY';
+export type ItemPrepStatus = 
+  | 'PENDING' 
+  | 'QUEUED' 
+  | 'COOKING' 
+  | 'READY' 
+  | 'ON_THE_WAY' 
+  | 'SERVED' 
+  | 'REJECTED';
 
 export interface OrderItem {
   id: string;
