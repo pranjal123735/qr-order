@@ -137,7 +137,7 @@ function KitchenLiveOrdersContent() {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  const currency = restaurant?.currency || '₹';
+  const currency = (!restaurant?.currency || restaurant.currency === '$') ? '₹' : restaurant.currency;
 
   return (
     <AdminAuthGuard slug={slug}>

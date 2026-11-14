@@ -221,7 +221,7 @@ function CustomerMenuContent() {
     );
   }
 
-  const currency = restaurant?.currency || '$';
+  const currency = (!restaurant?.currency || restaurant.currency === '$') ? '₹' : restaurant.currency;
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-32 font-sans select-none antialiased overflow-x-hidden w-full">
@@ -393,7 +393,7 @@ function CustomerMenuContent() {
                     {item.name}
                   </h3>
                   <div className="font-black text-sm text-stone-950 mt-1">
-                    {currency}{item.price.toFixed(2)}
+                    {currency}{item.price % 1 === 0 ? item.price.toFixed(0) : item.price.toFixed(2)}
                   </div>
 
                   {/* Description */}
@@ -474,7 +474,7 @@ function CustomerMenuContent() {
                   Table #{tableNumber} Order
                 </p>
                 <p className="text-base font-black text-white leading-tight">
-                  {currency}{cartTotalPrice.toFixed(2)}
+                  {currency}{cartTotalPrice % 1 === 0 ? cartTotalPrice.toFixed(0) : cartTotalPrice.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -520,7 +520,7 @@ function CustomerMenuContent() {
                         {item.menuItem.name}
                       </h4>
                       <p className="text-xs text-stone-500 font-bold">
-                        {currency}{item.menuItem.price.toFixed(2)} each
+                        {currency}{item.menuItem.price % 1 === 0 ? item.menuItem.price.toFixed(0) : item.menuItem.price.toFixed(2)} each
                       </p>
                     </div>
 
@@ -600,7 +600,7 @@ function CustomerMenuContent() {
               <div className="flex items-center justify-between text-sm">
                 <span className="font-bold text-stone-500">Total Bill</span>
                 <span className="font-black text-2xl text-stone-950">
-                  {currency}{cartTotalPrice.toFixed(2)}
+                  {currency}{cartTotalPrice % 1 === 0 ? cartTotalPrice.toFixed(0) : cartTotalPrice.toFixed(2)}
                 </span>
               </div>
 

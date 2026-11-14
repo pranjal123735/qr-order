@@ -176,7 +176,7 @@ function CreateRestaurantContent() {
                 </label>
                 <input
                   type="text"
-                  placeholder="$"
+                  placeholder="₹"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
                   className="w-full px-3 py-2.5 bg-stone-950 border border-stone-800 rounded-xl text-xs text-white text-center font-bold placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500"

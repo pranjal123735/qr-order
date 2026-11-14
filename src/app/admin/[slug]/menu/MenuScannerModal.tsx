@@ -120,7 +120,7 @@ export function MenuScannerModal({
           presetId: params.presetId,
           imageBase64: params.imageBase64,
           rawText: params.text,
-          currency: restaurant.currency || '₹',
+          currency: (!restaurant.currency || restaurant.currency === '$') ? '₹' : restaurant.currency,
           clientApiKey: (geminiApiKey || 'AIzaSyB5Aw4K_sngyOqU2vFFNvnECoFhbaLy5xM').trim(),
         }),
       });
@@ -664,7 +664,7 @@ Spaghetti Aglio e Olio - 320`}
                             className="flex-1 min-w-0 font-black text-xs text-white bg-transparent border-b border-stone-800 focus:border-amber-500 focus:outline-none py-0.5 truncate"
                           />
                           <div className="flex items-center gap-1 font-mono text-xs font-black text-amber-400 bg-stone-900 px-2 py-0.5 rounded-lg border border-stone-800 shrink-0">
-                            <span className="text-amber-500 font-bold">{restaurant.currency || '₹'}</span>
+                            <span className="text-amber-500 font-bold">{(!restaurant.currency || restaurant.currency === '$') ? '₹' : restaurant.currency}</span>
                             <input
                               type="number"
                               value={item.price}

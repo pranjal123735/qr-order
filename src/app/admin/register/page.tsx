@@ -23,7 +23,7 @@ function RegisterContent() {
   const [password, setPassword] = useState('');
   const [restaurantName, setRestaurantName] = useState('');
   const [slug, setSlug] = useState('');
-  const [currency, setCurrency] = useState('$');
+  const [currency, setCurrency] = useState('₹');
   const [tagline, setTagline] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,7 @@ function RegisterContent() {
         password,
         restaurantName: restaurantName.trim(),
         slug: slug.trim(),
-        currency: currency.trim() || '$',
+        currency: currency.trim() || '₹',
         tagline: tagline.trim(),
       });
 
@@ -203,7 +203,7 @@ function RegisterContent() {
                   </label>
                   <input
                     type="text"
-                    placeholder="$"
+                    placeholder="₹"
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
                     className="w-full px-3 py-2 bg-stone-950 border border-stone-800 rounded-xl text-xs text-white text-center font-bold focus:outline-none focus:ring-1 focus:ring-amber-500"

@@ -71,7 +71,7 @@ export const AuthService = {
         name: params.restaurantName,
         slug: cleanSlug,
         tagline: params.tagline,
-        currency: params.currency || '$',
+        currency: (!params.currency || params.currency === '$') ? '₹' : params.currency,
       });
 
       // 2. Create the user

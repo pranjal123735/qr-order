@@ -396,7 +396,7 @@ function MenuManagerContent() {
                           {item.is_veg ? 'Veg' : 'Non-Veg'}
                         </span>
                         <span className="font-mono text-xs font-black text-amber-400 ml-auto">
-                          {restaurant?.currency || '₹'}{item.price.toFixed(0)}
+                          {(!restaurant?.currency || restaurant.currency === '$') ? '₹' : restaurant.currency}{item.price.toFixed(0)}
                         </span>
                         <button
                           type="button"
@@ -527,7 +527,7 @@ function MenuManagerContent() {
                     type="number"
                     step="0.01"
                     required
-                    placeholder="14.50"
+                    placeholder="199"
                     value={newItemPrice}
                     onChange={(e) => setNewItemPrice(e.target.value)}
                     className="w-full px-3 py-2.5 bg-stone-950 border border-stone-800 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
