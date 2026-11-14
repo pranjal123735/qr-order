@@ -86,8 +86,21 @@ export function TableServiceBellModal({
   const handleRingBell = async () => {
     try {
       setIsSubmitting(true);
-      // Play desk bell chime
-      audioManager.playServiceBell();
+      // Play desk bell chime and announce aloud what was selected
+      await audioManager.unlockAudio();
+      let announcement = `Service bell rung for Table ${tableNumber}.`;
+      if (selectedType === 'BILL') {
+        announcement = `Service bell rung for Table ${tableNumber}: Requesting bill and payment.`;
+      } else if (selectedType === 'DOUBT') {
+        announcement = `Service bell rung for Table ${tableNumber}: Calling staff for doubt or question.`;
+      } else if (selectedType === 'FEEDBACK') {
+        announcement = `Service bell rung for Table ${tableNumber}: Feedback for manager.`;
+      } else if (selectedType === 'WATER') {
+        announcement = `Service bell rung for Table ${tableNumber}: Requesting water or cutlery.`;
+      } else {
+        announcement = `Service bell rung for Table ${tableNumber}: Calling waiter to table.`;
+      }
+      audioManager.ringAndAnnounce(announcement);
 
       await DataStore.createServiceCall({
         restaurant_id: restaurantId,

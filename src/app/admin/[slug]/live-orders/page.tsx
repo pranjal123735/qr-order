@@ -127,6 +127,25 @@ function getStatusBadgeInfo(status: OrderStatus) {
   }
 }
 
+function getAnnouncementText(call: ServiceCall): string {
+  if (call.type === 'BILL') {
+    return `Table ${call.table_number}: Requesting bill and payment.${call.notes ? ' ' + call.notes : ''}`;
+  }
+  if (call.type === 'FOOD_INFO') {
+    return `Table ${call.table_number}: Food info requested for ${call.item_name || 'dish'}.${call.notes ? ' ' + call.notes : ''}`;
+  }
+  if (call.type === 'DOUBT') {
+    return `Table ${call.table_number}: Customer has a question or doubt.${call.notes ? ' ' + call.notes : ''}`;
+  }
+  if (call.type === 'FEEDBACK') {
+    return `Table ${call.table_number}: Customer requested feedback or manager.${call.notes ? ' ' + call.notes : ''}`;
+  }
+  if (call.type === 'WATER') {
+    return `Table ${call.table_number}: Requesting water or cutlery.${call.notes ? ' ' + call.notes : ''}`;
+  }
+  return `Table ${call.table_number}: Calling waiter to table.${call.notes ? ' ' + call.notes : ''}`;
+}
+
 function KitchenLiveOrdersContent() {
   const router = useRouter();
   const routeParams = useParams();
@@ -136,6 +155,8 @@ function KitchenLiveOrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [speechEnabled, setSpeechEnabled] = useState(true);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'COOKING' | 'ON_THE_WAY' | 'SERVED'>('ALL');
   const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -147,10 +168,27 @@ function KitchenLiveOrdersContent() {
   // Live Table Service Bells & Calls state
   const [serviceCalls, setServiceCalls] = useState<ServiceCall[]>([]);
   const prevCallsCountRef = useRef<number>(0);
+  const knownCallIdsRef = useRef<Set<string>>(new Set());
 
   // Confirmation modal and Undo / manual status picker state
   const [confirmDialog, setConfirmDialog] = useState<StatusChangeRequest | null>(null);
   const [statusPickerOrder, setStatusPickerOrder] = useState<Order | null>(null);
+
+  // Auto-unlock audio and speech on any initial interaction anywhere on screen
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      audioManager.unlockAudio();
+      setAudioUnlocked(true);
+    };
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true });
+    window.addEventListener('keydown', handleUserInteraction, { once: true });
+    return () => {
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -173,13 +211,26 @@ function KitchenLiveOrdersContent() {
       ]);
 
       const pendingCalls = calls.filter(c => c.status === 'PENDING');
-      if (shouldChime) {
-        if (allOrders.length > prevOrderCountRef.current && audioEnabled) {
+      const newCalls = pendingCalls.filter(c => !knownCallIdsRef.current.has(c.id));
+
+      if (shouldChime && audioEnabled) {
+        if (newCalls.length > 0) {
+          // Play desk bell AND speak the latest service call announcement
+          const latestCall = newCalls[0];
+          const speakText = getAnnouncementText(latestCall);
+          if (speechEnabled) {
+            audioManager.ringAndAnnounce(speakText);
+          } else {
+            audioManager.playServiceBell();
+          }
+        } else if (allOrders.length > prevOrderCountRef.current) {
           audioManager.playNewOrderChime();
-        } else if (pendingCalls.length > prevCallsCountRef.current && audioEnabled) {
-          audioManager.playServiceBell();
         }
       }
+
+      // Mark calls as known
+      pendingCalls.forEach(c => knownCallIdsRef.current.add(c.id));
+
       prevOrderCountRef.current = allOrders.length;
       prevCallsCountRef.current = pendingCalls.length;
       setServiceCalls(pendingCalls);
@@ -325,6 +376,26 @@ function KitchenLiveOrdersContent() {
       <div className="min-h-screen bg-neutral-950 text-stone-100 flex flex-col font-sans select-none antialiased overflow-x-clip w-full">
       {/* 1. Permanently Fixed Top Header & Tabs Bar */}
       <div className="fixed top-0 inset-x-0 z-50 bg-neutral-900 border-b border-neutral-800 shadow-2xl backdrop-blur-md">
+        {/* Audio / Voice Autoplay Permission Unlock Banner */}
+        {!audioUnlocked && (
+          <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-orange-400 text-stone-950 px-4 py-2 text-xs font-black flex items-center justify-between shadow-md">
+            <div className="flex items-center gap-2">
+              <Volume2 className="w-4 h-4 animate-bounce" />
+              <span>Tap anywhere or click to activate live Kitchen Bell & Voice Announcements</span>
+            </div>
+            <button
+              onClick={async () => {
+                await audioManager.unlockAudio();
+                setAudioUnlocked(true);
+                audioManager.ringAndAnnounce('Kitchen audio and speech announcements active!');
+              }}
+              className="px-3.5 py-1.5 bg-stone-950 hover:bg-stone-900 text-white rounded-xl text-xs font-black shadow-md transition active:scale-95"
+            >
+              Enable Sound & Voice 🔊
+            </button>
+          </div>
+        )}
+
         {/* Sleek Top Navigation Bar */}
         <header className="px-3.5 sm:px-6 py-3 sm:py-3.5 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 border-b border-neutral-800/80">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -385,6 +456,27 @@ function KitchenLiveOrdersContent() {
                   <span className="hidden xs:inline">Muted</span>
                 </>
               )}
+            </button>
+
+            <button
+              onClick={() => {
+                audioManager.unlockAudio();
+                setAudioUnlocked(true);
+                const nextSpeech = !speechEnabled;
+                setSpeechEnabled(nextSpeech);
+                if (nextSpeech) {
+                  audioManager.ringAndAnnounce('Voice announcements active');
+                }
+              }}
+              className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                speechEnabled
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-md'
+                  : 'bg-neutral-800 text-stone-400 border border-neutral-700'
+              }`}
+              title="Toggle Voice Speech Announcements"
+            >
+              <Volume2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{speechEnabled ? 'Voice ON 🗣️' : 'Voice Off'}</span>
             </button>
 
             <button
@@ -574,14 +666,30 @@ function KitchenLiveOrdersContent() {
                       )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleResolveCall(call.id)}
-                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-sm transition active:scale-98 flex items-center justify-center gap-1.5"
-                    >
-                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Mark Attended / Resolved</span>
-                    </button>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioManager.unlockAudio();
+                          setAudioUnlocked(true);
+                          audioManager.ringAndAnnounce(getAnnouncementText(call));
+                        }}
+                        className="py-2 px-3 bg-neutral-800 hover:bg-neutral-750 text-amber-400 font-bold text-xs rounded-lg border border-neutral-700 transition active:scale-95 flex items-center justify-center gap-1 shrink-0"
+                        title="Speak this table call aloud"
+                      >
+                        <Volume2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Speak</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleResolveCall(call.id)}
+                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-sm transition active:scale-98 flex items-center justify-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Mark Attended / Resolved</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })}

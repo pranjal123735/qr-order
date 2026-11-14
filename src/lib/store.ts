@@ -15,29 +15,58 @@ import {
   INITIAL_ORDERS 
 } from './mockData';
 
-// Safe Browser Broadcast Channel for local real-time sync across tabs
+// Safe Browser Broadcast Channel + Storage Event for 100% reliable local real-time sync across tabs and windows
 class CrossTabSync {
   private channel: BroadcastChannel | null = null;
   private listeners: Set<(event: { type: string; payload: unknown }) => void> = new Set();
 
   constructor() {
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      try {
-        this.channel = new BroadcastChannel('qr_order_realtime_sync');
-        this.channel.onmessage = (event) => {
-          this.listeners.forEach(fn => fn(event.data));
-        };
-      } catch (err) {
-        console.warn('BroadcastChannel not initialized:', err);
+    if (typeof window !== 'undefined') {
+      if ('BroadcastChannel' in window) {
+        try {
+          this.channel = new BroadcastChannel('qr_order_realtime_sync');
+          this.channel.onmessage = (event) => {
+            this.listeners.forEach(fn => fn(event.data));
+          };
+        } catch (err) {
+          console.warn('BroadcastChannel not initialized:', err);
+        }
       }
+
+      // Also listen to storage events for multi-window and background tab reliability
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'qr_cross_tab_sync_event' && e.newValue) {
+          try {
+            const data = JSON.parse(e.newValue);
+            if (data && data.type) {
+              this.listeners.forEach(fn => fn(data));
+            }
+          } catch {
+            // ignore
+          }
+        }
+      });
     }
   }
 
   public emit(type: string, payload: unknown) {
     if (this.channel) {
-      this.channel.postMessage({ type, payload });
+      try {
+        this.channel.postMessage({ type, payload });
+      } catch (err) {
+        console.warn('BroadcastChannel emit error:', err);
+      }
     }
-    // Also trigger locally
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qr_cross_tab_sync_event', JSON.stringify({ type, payload, _ts: Date.now() }));
+      } catch {
+        // ignore
+      }
+    }
+
+    // Also trigger locally in current window
     this.listeners.forEach(fn => fn({ type, payload }));
   }
 

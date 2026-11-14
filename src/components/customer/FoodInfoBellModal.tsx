@@ -67,8 +67,9 @@ export function FoodInfoBellModal({
   const handleRingKitchen = async () => {
     try {
       setIsSubmitting(true);
-      // Play audio chime
-      audioManager.playServiceBell();
+      // Play audio chime and speak what dish was selected
+      await audioManager.unlockAudio();
+      audioManager.ringAndAnnounce(`Kitchen bell rung for ${item.item_name}. Table ${tableNumber}.`);
 
       const activeInquiryObj = quickInquiries.find(q => q.id === selectedQuickInquiry);
       const chosenText = activeInquiryObj ? activeInquiryObj.text : '';

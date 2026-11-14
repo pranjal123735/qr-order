@@ -1,8 +1,9 @@
-// Web Audio API Synthesized Chime (No external audio file dependencies)
+// Web Audio API Synthesized Chime & Text-to-Speech Voice Engine (Zero external dependencies)
 
 class AudioManager {
   private audioCtx: AudioContext | null = null;
   private isMuted: boolean = false;
+  private isUnlocked: boolean = false;
 
   private getAudioContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -13,17 +14,91 @@ class AudioManager {
       }
     }
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume();
+      this.audioCtx.resume().catch(() => {});
     }
     return this.audioCtx;
   }
 
+  // Explicit user gesture unlock for modern browsers (Chrome/Safari/Edge audio autoplay policy)
+  public async unlockAudio(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    try {
+      const ctx = this.getAudioContext();
+      if (ctx) {
+        if (ctx.state === 'suspended') {
+          await ctx.resume();
+        }
+        // Play micro silent tone to unlock audio pipeline
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      }
+
+      // Warm up SpeechSynthesis
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.resume();
+        const silentUtterance = new SpeechSynthesisUtterance('');
+        silentUtterance.volume = 0;
+        window.speechSynthesis.speak(silentUtterance);
+      }
+
+      this.isUnlocked = true;
+      return true;
+    } catch (err) {
+      console.warn('Audio unlock failed or waiting for user gesture:', err);
+      return false;
+    }
+  }
+
+  public isAudioUnlocked(): boolean {
+    if (typeof window === 'undefined') return false;
+    return this.isUnlocked || (this.audioCtx?.state === 'running');
+  }
+
   public setMuted(muted: boolean) {
     this.isMuted = muted;
+    if (muted && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
   }
 
   public getMuted(): boolean {
     return this.isMuted;
+  }
+
+  // Text-To-Speech announcement using Web Speech API
+  public speak(text: string, lang = 'en-US') {
+    if (this.isMuted || typeof window === 'undefined') return;
+    if (!('speechSynthesis' in window)) return;
+
+    try {
+      // Resume if browser suspended speech
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      window.speechSynthesis.cancel(); // Clear queued speech to prioritize latest call
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      utterance.rate = 0.95; // Crisp, clear announcement pace
+      utterance.pitch = 1.05; // Friendly, audible tone
+      utterance.volume = 1.0;
+
+      // Pick matching voice if available
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        const matchingVoice = voices.find(v => v.lang.startsWith(lang.split('-')[0])) || voices[0];
+        if (matchingVoice) {
+          utterance.voice = matchingVoice;
+        }
+      }
+
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('Speech synthesis error:', e);
+    }
   }
 
   // Kitchen chime for new incoming orders (double bell ring)
@@ -90,6 +165,16 @@ class AudioManager {
     }
   }
 
+  // Play desk bell chime followed immediately by spoken announcement
+  public ringAndAnnounce(announcement: string, lang = 'en-US') {
+    if (this.isMuted) return;
+    this.playServiceBell();
+    // Delay voice slightly so the bell chime resonates first
+    setTimeout(() => {
+      this.speak(announcement, lang);
+    }, 700);
+  }
+
   private playTone(ctx: AudioContext, freq: number, startTime: number, duration: number, type: OscillatorType) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -97,7 +182,7 @@ class AudioManager {
     osc.type = type;
     osc.frequency.setValueAtTime(freq, startTime);
 
-    gain.gain.setValueAtTime(0.2, startTime);
+    gain.gain.setValueAtTime(0.25, startTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
     osc.connect(gain);
