@@ -100,6 +100,13 @@ export function TableServiceBellModal({
       color: 'hover:border-cyan-500 hover:bg-cyan-50/50',
     },
     {
+      type: 'CLEAN',
+      label: 'Clean Table / Napkins / Cutlery',
+      icon: <Sparkles className="w-5 h-5 text-emerald-600" />,
+      desc: 'Request table clean, napkins, or fresh plates',
+      color: 'hover:border-emerald-500 hover:bg-emerald-50/50',
+    },
+    {
       type: 'WAITER',
       label: t.call_reason_general,
       icon: <UserCheck className="w-5 h-5 text-amber-600" />,
@@ -123,6 +130,8 @@ export function TableServiceBellModal({
         announcement = `Service bell rung for Table ${tableNumber}: Feedback for manager.`;
       } else if (selectedType === 'WATER') {
         announcement = `Service bell rung for Table ${tableNumber}: Requesting water or cutlery.`;
+      } else if (selectedType === 'CLEAN') {
+        announcement = `Service bell rung for Table ${tableNumber}: Requesting table clean or napkins.`;
       } else {
         announcement = `Service bell rung for Table ${tableNumber}: Calling waiter to table.`;
       }

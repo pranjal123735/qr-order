@@ -117,7 +117,8 @@ export type ServiceCallType =
   | 'FEEDBACK' 
   | 'DOUBT' 
   | 'WATER' 
-  | 'WAITER';
+  | 'WAITER'
+  | 'CLEAN';
 
 export interface ServiceCall {
   id: string;
@@ -130,4 +131,6 @@ export interface ServiceCall {
   notes?: string;
   status: 'PENDING' | 'RESOLVED';
   created_at: string;
+  resolved_at?: string;
+  waiter_name?: string;
 }

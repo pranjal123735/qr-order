@@ -20,7 +20,8 @@ import {
   Check, 
   Clock, 
   ShoppingBag,
-  Printer
+  Printer,
+  BellRing
 } from 'lucide-react';
 
 function DashboardContent() {
@@ -32,6 +33,7 @@ function DashboardContent() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [ordersCount, setOrdersCount] = useState<number>(0);
   const [menuItemsCount, setMenuItemsCount] = useState<number>(0);
+  const [serviceCallsCount, setServiceCallsCount] = useState<number>(0);
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState('');
 
@@ -43,19 +45,31 @@ function DashboardContent() {
       const res = await DataStore.getRestaurant(slug);
       if (res) {
         setRestaurant(res);
-        const [orders, items] = await Promise.all([
+        const [orders, items, calls] = await Promise.all([
           DataStore.getOrders(res.id),
           DataStore.getMenuItems(res.id),
+          DataStore.getServiceCalls(res.id),
         ]);
         setOrdersCount(orders.filter(o => o.status !== 'CANCELLED' && o.status !== 'REJECTED').length);
         setMenuItemsCount(items.length);
+        setServiceCallsCount(calls.filter(c => c.status === 'PENDING').length);
       }
     }
     loadData();
 
+    const unsubCalls = DataStore.subscribeToServiceCalls(slug, async () => {
+      const res = await DataStore.getRestaurant(slug);
+      if (res) {
+        const freshCalls = await DataStore.getServiceCalls(res.id);
+        setServiceCallsCount(freshCalls.filter(c => c.status === 'PENDING').length);
+      }
+    });
+
     if (typeof window !== 'undefined') {
       setOrigin(window.location.origin);
     }
+
+    return () => unsubCalls();
   }, [slug]);
 
   const handleLogout = () => {
@@ -146,7 +160,7 @@ function DashboardContent() {
         </div>
 
         {/* 3. Action Hub Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Card 1: Kitchen Screen (KDS) */}
           <Link
             href={`/admin/${slug}/live-orders`}
@@ -252,6 +266,51 @@ function DashboardContent() {
 
             <div className="mt-6 pt-4 border-t border-stone-800/80 flex items-center justify-between text-xs font-black text-purple-400 group-hover:text-purple-300">
               <span>Print Table QR Cards</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition" />
+            </div>
+          </Link>
+
+          {/* Card 4: Table Service Bells & Waiter Dispatch */}
+          <Link
+            href={`/admin/${slug}/live-orders?tab=BELLS`}
+            className="group relative p-5 sm:p-7 rounded-3xl bg-gradient-to-b from-stone-900 to-stone-900/90 border border-amber-500/40 hover:border-amber-400 hover:shadow-2xl hover:shadow-amber-500/10 transition-all duration-300 flex flex-col justify-between overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition" />
+
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center group-hover:scale-110 transition shadow-lg shrink-0">
+                  <BellRing className={`w-6 h-6 sm:w-7 sm:h-7 ${serviceCallsCount > 0 ? 'animate-bounce text-amber-400' : 'text-stone-400'}`} />
+                </div>
+                <span className={`px-3 py-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-full border flex items-center gap-1.5 shrink-0 ${
+                  serviceCallsCount > 0
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 animate-pulse'
+                    : 'bg-stone-800 text-stone-400 border-stone-700'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${serviceCallsCount > 0 ? 'bg-rose-500 animate-ping' : 'bg-stone-500'}`} />
+                  {serviceCallsCount > 0 ? `${serviceCallsCount} Calling` : 'Idle'}
+                </span>
+              </div>
+
+              <h3 className="font-black text-white text-lg sm:text-xl tracking-tight group-hover:text-amber-300 transition">
+                Table Service Bells
+              </h3>
+              <p className="text-xs text-stone-400 mt-2 leading-relaxed">
+                Track live table bell rings, reasons (water, bill, clean table, assistance), and dispatch waiters in first-come, first-served sequence.
+              </p>
+
+              <div className={`mt-5 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black border ${
+                serviceCallsCount > 0
+                  ? 'bg-amber-950/60 text-amber-300 border-amber-500/40 animate-pulse'
+                  : 'bg-stone-850 text-stone-400 border-stone-750'
+              }`}>
+                <Clock className="w-3.5 h-3.5" />
+                <span>{serviceCallsCount} bell call{serviceCallsCount === 1 ? '' : 's'} waiting in queue</span>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-stone-800/80 flex items-center justify-between text-xs font-black text-amber-400 group-hover:text-amber-300">
+              <span>Open Waiter Dispatch</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition" />
             </div>
           </Link>

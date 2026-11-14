@@ -177,6 +177,18 @@ export interface Translations {
   waiter_on_way: string;
   staff_bell_alert: string;
   mark_attended: string;
+  tab_service_bells: string;
+  bell_status_title: string;
+  bell_status_subtitle: string;
+  queue_rank_first: string;
+  queue_rank_next: string;
+  btn_send_waiter: string;
+  waiter_dispatched: string;
+  btn_speak_announcement: string;
+  filter_active_queue: string;
+  filter_attended: string;
+  no_active_bells: string;
+  no_active_bells_desc: string;
 
   each: string;
 }
@@ -355,6 +367,18 @@ export const translations: Record<Language, Translations> = {
     waiter_on_way: 'Staff is attending to your table now.',
     staff_bell_alert: 'Table Bell Alert',
     mark_attended: 'Mark Attended',
+    tab_service_bells: 'Service Bells',
+    bell_status_title: 'Table Service Bells & Waiter Dispatch',
+    bell_status_subtitle: 'Track which table rang the bell and why. Send waiters in sequence-wise order.',
+    queue_rank_first: '#1 IN QUEUE • WAITING LONGEST',
+    queue_rank_next: '#{rank} IN QUEUE',
+    btn_send_waiter: 'Send Waiter to Table #{table}',
+    waiter_dispatched: 'Waiter Dispatched',
+    btn_speak_announcement: 'Announce Aloud',
+    filter_active_queue: 'Active Queue (Sequence-Wise)',
+    filter_attended: 'Attended History',
+    no_active_bells: 'No active table bells right now',
+    no_active_bells_desc: 'When diners tap "Call Waiter", "Water", or "Bill" at their table, the sequence queue will appear here live with audio alert.',
 
     each: 'each'
   },
@@ -531,6 +555,18 @@ export const translations: Record<Language, Translations> = {
     waiter_on_way: 'स्टाफ आपकी टेबल की ओर आ रहा है।',
     staff_bell_alert: 'टेबल सर्विस घंटी अलर्ट',
     mark_attended: 'अटेंड किया गया',
+    tab_service_bells: 'सर्विस बेल',
+    bell_status_title: 'टेबल सर्विस बेल और वेटर डिस्पैच',
+    bell_status_subtitle: 'देखें किस टेबल ने बेल बजाई और क्या आवश्यकता है। क्रमवार वेटर भेजें।',
+    queue_rank_first: '#1 कतार में • सबसे पहले वेटर भेजें',
+    queue_rank_next: '#{rank} कतार में',
+    btn_send_waiter: 'टेबल #{table} पर वेटर भेजें',
+    waiter_dispatched: 'वेटर भेजा गया',
+    btn_speak_announcement: 'आवाज़ में बोलें',
+    filter_active_queue: 'सक्रिय कतार (क्रमवार)',
+    filter_attended: 'अटेंड किए गए',
+    no_active_bells: 'अभी कोई सर्विस बेल सक्रिय नहीं है',
+    no_active_bells_desc: 'जब ग्राहक अपनी टेबल से वेटर, पानी या बिल के लिए बेल बजाएंगे, तो वे यहां क्रमवार दिखाई देंगे।',
 
     each: 'प्रत्येक'
   }
