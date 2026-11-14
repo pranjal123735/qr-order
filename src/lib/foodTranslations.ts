@@ -228,7 +228,7 @@ const FOOD_TOKEN_MAP: Record<string, string> = {
  * Translates a food name to natural Hindi if Hindi is selected.
  * Falls back gracefully to English if language is English.
  */
-export function translateFoodName(englishName: string, isHindi: boolean): string {
+export function translateFoodName(englishName: string, isHindi: boolean = true): string {
   if (!isHindi || !englishName) return englishName;
 
   const normalized = englishName.trim().toLowerCase();
@@ -263,7 +263,7 @@ export function translateFoodName(englishName: string, isHindi: boolean): string
 /**
  * Translates category names (e.g. Starters & Bites -> स्टार्टर्स और स्नैक्स)
  */
-export function translateCategoryName(englishCategory: string, isHindi: boolean): string {
+export function translateCategoryName(englishCategory: string, isHindi: boolean = true): string {
   if (!isHindi || !englishCategory) return englishCategory;
 
   const normalized = englishCategory.trim().toLowerCase();
@@ -302,7 +302,7 @@ export const FOOD_DESC_TRANSLATIONS: Record<string, string> = {
   'rich 70% belgian chocolate with an oozing warm molten center, served with vanilla bean gelato.': 'रिच 70% बेल्जियन चॉकलेट केक जिसमें से गर्म पिघली चॉकलेट निकलती है, वैनिला आइसक्रीम के साथ।',
 };
 
-export function translateFoodDescription(englishDesc: string, isHindi: boolean): string {
+export function translateFoodDescription(englishDesc: string, isHindi: boolean = true): string {
   if (!isHindi || !englishDesc) return englishDesc;
 
   const normalized = englishDesc.trim().toLowerCase();

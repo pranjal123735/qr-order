@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Order, OrderItemReview } from '@/types/database';
+import { Order, OrderItemReview, OrderItem, MenuItem, ServiceCallType } from '@/types/database';
 import { DataStore } from '@/lib/store';
 import { audioManager } from '@/lib/audio';
 import { 
@@ -22,10 +22,18 @@ import {
   Star,
   Rocket,
   Flame,
-  Check
+  Check,
+  Bell,
+  BellRing,
+  CreditCard,
+  HelpCircle,
+  MessageSquare,
+  Droplets
 } from 'lucide-react';
 import { useLanguage, LanguageSwitcher } from '@/lib/i18n';
 import { translateFoodName } from '@/lib/foodTranslations';
+import { TableServiceBellModal } from '@/components/customer/TableServiceBellModal';
+import { FoodInfoBellModal } from '@/components/customer/FoodInfoBellModal';
 
 function OrderTrackingContent() {
   const router = useRouter();
@@ -48,6 +56,38 @@ function OrderTrackingContent() {
   const [itemReviews, setItemReviews] = useState<Record<string, OrderItemReview>>({});
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  // Food Bell & Call Staff Assistance Modal state
+  const [selectedFoodItem, setSelectedFoodItem] = useState<OrderItem | null>(null);
+  const [isFoodBellOpen, setIsFoodBellOpen] = useState(false);
+  const [isStaffBellOpen, setIsStaffBellOpen] = useState(false);
+  const [staffBellType, setStaffBellType] = useState<ServiceCallType>('WAITER');
+  const [menuItemsMap, setMenuItemsMap] = useState<Record<string, MenuItem>>({});
+
+  useEffect(() => {
+    if (order?.restaurant_id) {
+      DataStore.getMenuItems(order.restaurant_id).then(items => {
+        const map: Record<string, MenuItem> = {};
+        items.forEach(it => {
+          map[it.id] = it;
+          map[it.name.toLowerCase().trim()] = it;
+        });
+        setMenuItemsMap(map);
+      });
+    }
+  }, [order?.restaurant_id]);
+
+  const handleOpenFoodBell = (item: OrderItem) => {
+    audioManager.playServiceBell();
+    setSelectedFoodItem(item);
+    setIsFoodBellOpen(true);
+  };
+
+  const handleOpenStaffBell = (type: ServiceCallType = 'WAITER') => {
+    audioManager.playServiceBell();
+    setStaffBellType(type);
+    setIsStaffBellOpen(true);
+  };
 
   useEffect(() => {
     async function fetchOrder() {
@@ -207,6 +247,14 @@ function OrderTrackingContent() {
         </span>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => handleOpenStaffBell('WAITER')}
+            className="p-1.5 sm:px-2.5 sm:py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-950 border border-amber-500/30 rounded-full font-bold text-xs flex items-center gap-1 transition active:scale-95 shadow-2xs"
+            title={t.call_staff_bell}
+          >
+            <BellRing className="w-3.5 h-3.5 text-amber-700 animate-bounce" />
+            <span className="hidden sm:inline">{t.call_staff_bell}</span>
+          </button>
           <LanguageSwitcher theme="light" size="sm" />
           <span className="px-2.5 sm:px-3 py-1 bg-amber-500/15 text-amber-950 border border-amber-500/30 rounded-full font-black text-xs">
             {t.table_number}{tableNumber}
@@ -384,6 +432,96 @@ function OrderTrackingContent() {
             </div>
           )}
         </div>
+
+        {/* Quick Table Assistance & Bell Action Bar */}
+        {!isCancelled && !isRejected && (
+          <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 rounded-3xl p-4 sm:p-5 border border-amber-500/30 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-xs">
+                  <Bell className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h4 className="font-black text-xs sm:text-sm text-stone-950 leading-tight">
+                    {t.call_staff_bell}
+                  </h4>
+                  <p className="text-[11px] text-stone-500">
+                    {isHindi ? 'बिल, कोई सवाल या सहायता के लिए टेबल पर स्टाफ बुलाएं' : 'Ring bell for bill, feedback, or any doubt'}
+                  </p>
+                </div>
+              </div>
+              <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-950 rounded-full font-black text-[11px]">
+                {t.table_number}{tableNumber}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleOpenStaffBell('BILL')}
+                className="p-2.5 rounded-2xl bg-white hover:bg-emerald-50 border border-stone-200 hover:border-emerald-300 text-left transition flex items-center gap-2 shadow-2xs active:scale-95 group"
+              >
+                <div className="w-7 h-7 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-700" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-black text-stone-900 block truncate leading-tight">
+                    {isHindi ? 'बिल / भुगतान' : 'Pay / Bill'}
+                  </span>
+                  <span className="text-[9px] text-stone-400 block truncate">UPI, Card, Cash</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenStaffBell('DOUBT')}
+                className="p-2.5 rounded-2xl bg-white hover:bg-blue-50 border border-stone-200 hover:border-blue-300 text-left transition flex items-center gap-2 shadow-2xs active:scale-95 group"
+              >
+                <div className="w-7 h-7 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                  <HelpCircle className="w-3.5 h-3.5 text-blue-700" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-black text-stone-900 block truncate leading-tight">
+                    {isHindi ? 'सवाल / शंका' : 'Any Doubt'}
+                  </span>
+                  <span className="text-[9px] text-stone-400 block truncate">Order help</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenStaffBell('FEEDBACK')}
+                className="p-2.5 rounded-2xl bg-white hover:bg-purple-50 border border-stone-200 hover:border-purple-300 text-left transition flex items-center gap-2 shadow-2xs active:scale-95 group"
+              >
+                <div className="w-7 h-7 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-3.5 h-3.5 text-purple-700" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-black text-stone-900 block truncate leading-tight">
+                    {isHindi ? 'फीडबैक' : 'Feedback'}
+                  </span>
+                  <span className="text-[9px] text-stone-400 block truncate">Chef / Manager</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenStaffBell('WAITER')}
+                className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-stone-950 text-left transition flex items-center gap-2 shadow-xs active:scale-95"
+              >
+                <div className="w-7 h-7 rounded-xl bg-white/30 flex items-center justify-center shrink-0">
+                  <BellRing className="w-3.5 h-3.5 text-stone-950 animate-bounce" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-black block truncate leading-tight">
+                    {isHindi ? 'वेटर बुलाएं' : 'Call Waiter'}
+                  </span>
+                  <span className="text-[9px] text-amber-950/80 block truncate">Table ring</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 2. Step Progress Bar */}
         {!isCancelled && !isRejected && (
@@ -575,8 +713,19 @@ function OrderTrackingContent() {
                         </div>
                       </div>
 
-                      {/* Dish Status Pill */}
-                      <div className="shrink-0">
+                      {/* Dish Status Pill & Food Bell */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Ring Bell for Food Info */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenFoodBell(item)}
+                          title={t.bell_food_info}
+                          className="px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-950 border border-amber-500/30 rounded-xl text-[10px] font-black flex items-center gap-1 transition active:scale-95 shadow-2xs group"
+                        >
+                          <BellRing className="w-3.5 h-3.5 text-amber-700 group-hover:animate-bounce" />
+                          <span className="hidden xs:inline">{t.btn_ring_bell}</span>
+                        </button>
+
                         {status === 'READY' && (
                           <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[11px] font-black flex items-center gap-1 shadow-xs">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
@@ -645,6 +794,17 @@ function OrderTrackingContent() {
                         {t.preparing_status}
                       </span>
                     )}
+
+                    {/* Ring Bell for Food Info */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenFoodBell(item)}
+                      title={t.bell_food_info}
+                      className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/90 rounded-md text-[10px] font-bold flex items-center gap-1 transition active:scale-95 shadow-2xs group"
+                    >
+                      <BellRing className="w-3 h-3 text-amber-600 group-hover:animate-bounce" />
+                      <span>{t.btn_ring_bell}</span>
+                    </button>
                   </div>
                   {item.notes && (
                     <p className="text-[11px] text-amber-700 italic pl-7 mt-0.5 font-medium">
@@ -827,6 +987,45 @@ function OrderTrackingContent() {
           </div>
         </div>
       )}
+
+      {/* Floating Call Staff / Service Bell Button */}
+      {!isCancelled && !isRejected && (
+        <div className="fixed bottom-5 right-4 z-40">
+          <button
+            type="button"
+            onClick={() => handleOpenStaffBell('WAITER')}
+            className="px-4 py-3 bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 text-stone-950 font-black text-xs rounded-full shadow-2xl shadow-amber-500/40 flex items-center gap-2 border-2 border-white transition active:scale-95 group ring-4 ring-amber-500/20"
+          >
+            <BellRing className="w-4 h-4 stroke-[2.5] text-stone-950 group-hover:animate-bounce" />
+            <span>{t.call_staff_bell}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Table Service Bell Modal (Pay, Doubt, Feedback, Waiter) */}
+      <TableServiceBellModal
+        isOpen={isStaffBellOpen}
+        onClose={() => setIsStaffBellOpen(false)}
+        restaurantId={order.restaurant_id}
+        tableNumber={tableNumber}
+        orderId={order.id}
+        initialType={staffBellType}
+      />
+
+      {/* Food Info Bell Modal (Ring kitchen for specific food) */}
+      <FoodInfoBellModal
+        isOpen={isFoodBellOpen}
+        onClose={() => setIsFoodBellOpen(false)}
+        restaurantId={order.restaurant_id}
+        tableNumber={tableNumber}
+        orderId={order.id}
+        item={selectedFoodItem}
+        menuItem={
+          selectedFoodItem 
+            ? (menuItemsMap[selectedFoodItem.menu_item_id] || menuItemsMap[selectedFoodItem.item_name.toLowerCase().trim()] || null)
+            : null
+        }
+      />
     </div>
   );
 }

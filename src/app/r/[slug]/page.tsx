@@ -22,10 +22,13 @@ import {
   Info,
   Sparkles,
   Flame,
-  Check
+  Check,
+  Bell,
+  BellRing
 } from 'lucide-react';
 import { useLanguage, LanguageSwitcher } from '@/lib/i18n';
 import { translateFoodName, translateFoodDescription, translateCategoryName } from '@/lib/foodTranslations';
+import { TableServiceBellModal } from '@/components/customer/TableServiceBellModal';
 
 function CustomerMenuContent() {
   const router = useRouter();
@@ -62,6 +65,7 @@ function CustomerMenuContent() {
 
   // Active order session
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [isStaffBellOpen, setIsStaffBellOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -263,6 +267,17 @@ function CustomerMenuContent() {
 
           {/* Language Switcher & Table Badge */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {tableNumber && (
+              <button
+                type="button"
+                onClick={() => setIsStaffBellOpen(true)}
+                className="p-1.5 sm:px-2.5 sm:py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-950 border border-amber-500/30 rounded-full font-bold text-xs flex items-center gap-1 transition active:scale-95 shadow-2xs"
+                title={t.call_staff_bell}
+              >
+                <BellRing className="w-3.5 h-3.5 text-amber-700 animate-bounce" />
+                <span className="hidden sm:inline">{t.call_staff_bell}</span>
+              </button>
+            )}
             <LanguageSwitcher theme="light" size="sm" />
 
             {isTableLockedFromQr ? (
@@ -691,6 +706,31 @@ function CustomerMenuContent() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Floating Call Staff Bell Button */}
+      {tableNumber && !isCartOpen && (
+        <div className="fixed bottom-24 right-4 z-40">
+          <button
+            type="button"
+            onClick={() => setIsStaffBellOpen(true)}
+            className="px-3.5 py-2.5 bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 text-stone-950 font-black text-xs rounded-full shadow-2xl shadow-amber-500/40 flex items-center gap-1.5 border-2 border-white transition active:scale-95 group ring-4 ring-amber-500/20"
+          >
+            <BellRing className="w-4 h-4 text-stone-950 group-hover:animate-bounce" />
+            <span>{t.call_staff_bell}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Table Service Bell Modal */}
+      {tableNumber && restaurant && (
+        <TableServiceBellModal
+          isOpen={isStaffBellOpen}
+          onClose={() => setIsStaffBellOpen(false)}
+          restaurantId={restaurant.id}
+          tableNumber={tableNumber}
+          orderId={activeOrderId || undefined}
+        />
       )}
     </div>
   );
