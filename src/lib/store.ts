@@ -722,7 +722,7 @@ export const DataStore = {
     });
   },
 
-  // 11. Service Calls & Table Bell Rings
+  // 11. Service Calls & Table Bell Rings (Cross-Device: Mobile -> Server -> Laptop)
   async createServiceCall(data: {
     restaurant_id: string;
     table_number: number;
@@ -732,27 +732,10 @@ export const DataStore = {
     item_id?: string;
     notes?: string;
   }): Promise<ServiceCall> {
-    // Anti-Abuse & Deduplication Guard:
-    // If this table already has an active PENDING call of same type (or same dish), reuse it instead of spamming
-    const currentCalls = getStored<ServiceCall[]>('service_calls', []);
-    const existingActive = currentCalls.find(c =>
-      c.restaurant_id === data.restaurant_id &&
-      c.table_number === data.table_number &&
-      c.status === 'PENDING' &&
-      (c.type === data.type || (data.item_id && c.item_id === data.item_id))
-    );
-
-    if (existingActive) {
-      const elapsed = Date.now() - new Date(existingActive.created_at).getTime();
-      if (elapsed < 60000) {
-        return existingActive;
-      }
-    }
-
-    const newCall: ServiceCall = {
+    let createdCall: ServiceCall = {
       id: 'call-' + Math.random().toString(36).substring(2, 9),
       restaurant_id: data.restaurant_id,
-      table_number: data.table_number,
+      table_number: Number(data.table_number),
       order_id: data.order_id,
       type: data.type,
       item_name: data.item_name,
@@ -762,53 +745,67 @@ export const DataStore = {
       created_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('service_calls').insert(newCall);
-      } catch (err) {
-        console.warn('Supabase service_calls insert skipped/failed:', err);
+    // 1. Post to Next.js API Server Route (bridges mobile phone to laptop kitchen terminal)
+    try {
+      const res = await fetch('/api/service-calls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.call) {
+          createdCall = json.call;
+        }
       }
+    } catch (err) {
+      console.warn('POST /api/service-calls network error, using local fallback:', err);
     }
 
-    const calls = getStored<ServiceCall[]>('service_calls', []);
-    const updated = [newCall, ...calls];
+    // 2. Local cache & BroadcastChannel
+    const currentCalls = getStored<ServiceCall[]>('service_calls', []);
+    const updated = [createdCall, ...currentCalls.filter(c => c.id !== createdCall.id)];
     setStored('service_calls', updated);
-    localSync.emit('NEW_SERVICE_CALL', newCall);
-    return newCall;
+    localSync.emit('NEW_SERVICE_CALL', createdCall);
+
+    return createdCall;
   },
 
   async getServiceCalls(restaurantId: string): Promise<ServiceCall[]> {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('service_calls')
-          .select('*')
-          .eq('restaurant_id', restaurantId)
-          .order('created_at', { ascending: false });
-        if (!error && data) return data as ServiceCall[];
-      } catch {
-        // fallback
+    // 1. Fetch from Next.js server API (Cross-Device synchronization)
+    try {
+      const res = await fetch(`/api/service-calls?restaurant_id=${encodeURIComponent(restaurantId)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.calls && Array.isArray(json.calls)) {
+          setStored('service_calls', json.calls);
+          return json.calls as ServiceCall[];
+        }
       }
+    } catch {
+      // fallback to local cache
     }
+
     const calls = getStored<ServiceCall[]>('service_calls', []);
     return calls.filter(c => c.restaurant_id === restaurantId);
   },
 
-  async resolveServiceCall(callId: string): Promise<boolean> {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase
-          .from('service_calls')
-          .update({ status: 'RESOLVED' })
-          .eq('id', callId);
-      } catch {
-        // fallback
-      }
+  async resolveServiceCall(callId: string, waiterName?: string): Promise<boolean> {
+    try {
+      await fetch('/api/service-calls', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callId, status: 'RESOLVED', waiterName }),
+      });
+    } catch {
+      // fallback
     }
+
     const calls = getStored<ServiceCall[]>('service_calls', []);
-    const updated = calls.map(c => c.id === callId ? { ...c, status: 'RESOLVED' as const } : c);
+    const resolvedAt = new Date().toISOString();
+    const updated = calls.map(c => c.id === callId ? { ...c, status: 'RESOLVED' as const, resolved_at: resolvedAt, waiter_name: waiterName } : c);
     setStored('service_calls', updated);
-    localSync.emit('SERVICE_CALL_RESOLVED', { callId });
+    localSync.emit('SERVICE_CALL_RESOLVED', { callId, resolvedAt, waiterName });
     return true;
   },
 
@@ -819,23 +816,19 @@ export const DataStore = {
       }
     });
 
-    if (isSupabaseConfigured && supabase) {
-      const client = supabase;
-      const channel = client
-        .channel(`public:service_calls:${restaurantIdOrSlug}:${Math.random().toString(36).substring(2, 7)}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'service_calls' },
-          () => onUpdate()
-        )
-        .subscribe();
+    // 2-second polling to ensure mobile bell rings reach laptop screen instantly
+    const pollInterval = setInterval(async () => {
+      try {
+        const calls = await this.getServiceCalls(restaurantIdOrSlug);
+        onUpdate({ calls });
+      } catch {
+        // ignore
+      }
+    }, 2000);
 
-      return () => {
-        unsubLocal();
-        client.removeChannel(channel);
-      };
-    }
-
-    return unsubLocal;
+    return () => {
+      unsubLocal();
+      clearInterval(pollInterval);
+    };
   },
 };

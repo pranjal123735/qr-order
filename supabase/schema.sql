@@ -84,6 +84,20 @@ CREATE TABLE IF NOT EXISTS order_items (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 8. Service Calls / Table Bells Table
+CREATE TABLE IF NOT EXISTS service_calls (
+    id TEXT PRIMARY KEY,
+    restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE NOT NULL,
+    table_number INTEGER NOT NULL,
+    order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+    type TEXT NOT NULL, -- 'BILL', 'FOOD_INFO', 'FEEDBACK', 'DOUBT', 'WATER', 'WAITER'
+    item_name TEXT,
+    item_id TEXT,
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'RESOLVED'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- ================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- Enables anonymous diners & kitchen staff to read/write seamlessly
@@ -138,6 +152,14 @@ DROP POLICY IF EXISTS "Public Update Order Items" ON order_items;
 CREATE POLICY "Public Read Order Items" ON order_items FOR SELECT USING (true);
 CREATE POLICY "Public Insert Order Items" ON order_items FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public Update Order Items" ON order_items FOR UPDATE USING (true);
+
+ALTER TABLE service_calls ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public Read Service Calls" ON service_calls;
+DROP POLICY IF EXISTS "Public Insert Service Calls" ON service_calls;
+DROP POLICY IF EXISTS "Public Update Service Calls" ON service_calls;
+CREATE POLICY "Public Read Service Calls" ON service_calls FOR SELECT USING (true);
+CREATE POLICY "Public Insert Service Calls" ON service_calls FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public Update Service Calls" ON service_calls FOR UPDATE USING (true);
 
 -- ================================================================
 -- ENABLE SUPABASE REALTIME REPLICATION SAFELY
