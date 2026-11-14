@@ -145,17 +145,41 @@ export function MenuScannerModal({
   };
 
   // Open photo replacement picker
-  const handleOpenPhotoPicker = (item: ScannedMenuItem) => {
+  const handleOpenPhotoPicker = async (item: ScannedMenuItem) => {
     setPhotoPickerItem(item);
     setCustomPhotoQuery(item.name);
     const options = getFoodPhotoOptions(item.name, item.category);
     setPhotoOptions(options);
+
+    try {
+      const res = await fetch(`/api/menu/food-image?q=${encodeURIComponent(item.name)}&category=${encodeURIComponent(item.category || '')}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.options) && data.options.length > 0) {
+          setPhotoOptions(data.options);
+        }
+      }
+    } catch {
+      // keep initial options
+    }
   };
 
-  const handleSearchCustomPhoto = () => {
+  const handleSearchCustomPhoto = async () => {
     if (!customPhotoQuery.trim()) return;
     const options = getFoodPhotoOptions(customPhotoQuery);
     setPhotoOptions(options);
+
+    try {
+      const res = await fetch(`/api/menu/food-image?q=${encodeURIComponent(customPhotoQuery)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.options) && data.options.length > 0) {
+          setPhotoOptions(data.options);
+        }
+      }
+    } catch {
+      // keep initial options
+    }
   };
 
   const handleSelectPhoto = (url: string) => {

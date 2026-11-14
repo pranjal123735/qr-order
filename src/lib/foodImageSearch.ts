@@ -66,7 +66,7 @@ export const FOOD_PHOTO_LIBRARY: Array<{ keywords: string[]; title: string; urls
   },
   // Indian Curries & Specialties
   {
-    keywords: ['rajma', 'rajma rice', 'rajma chawal', 'kidney beans', 'rajma rasaila'],
+    keywords: ['rajma rice', 'rajma chawal', 'rajma with desi ghee', 'peerah rajma', 'dogri khate rajma', 'rajma rasaila', 'rajma'],
     title: 'Punjabi Rajma & Steamed Basmati Rice',
     urls: [
       'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80',
@@ -74,10 +74,43 @@ export const FOOD_PHOTO_LIBRARY: Array<{ keywords: string[]; title: string; urls
     ]
   },
   {
-    keywords: ['chaap', 'soya chaap', 'malai chaap', 'tawa chaap', 'chaap lababdar'],
-    title: 'Tandoori Soya Chaap Tikka',
+    keywords: ['kadai paneer', 'kadhai paneer'],
+    title: 'Wok-Tossed Kadai Paneer',
     urls: [
-      'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['shahi paneer', 'paneer noor jahan', 'paneer lazeez'],
+    title: 'Royal Shahi Paneer Lazeez',
+    urls: [
+      'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['paneer lababdar', 'paneer makhni', 'paneer butter masala', 'paneer tikke butter masala', 'paneer anagar', 'paneer'],
+    title: 'Velvety Paneer Lababdar & Makhni',
+    urls: [
+      'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['yellow daal tadka', 'daal tadka', 'dal tadka', 'yellow dal', 'dal fry', 'tadka dal', 'tadka'],
+    title: 'Homestyle Yellow Daal Tadka',
+    urls: [
+      'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['daal makhni', 'daal bukhara', 'dal makhani', 'dal bukhara', 'dal', 'daal', 'lentils'],
+    title: 'Slow-Simmered Daal Makhni',
+    urls: [
+      'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&auto=format&fit=crop&q=80',
     ]
   },
   {
@@ -89,18 +122,66 @@ export const FOOD_PHOTO_LIBRARY: Array<{ keywords: string[]; title: string; urls
     ]
   },
   {
-    keywords: ['paneer', 'paneer butter masala', 'shahi paneer', 'kadai paneer', 'palak paneer'],
-    title: 'Creamy Paneer Butter Masala',
+    keywords: ['butter naan', 'plain naan', 'chily garlic naan', 'garli naan', 'garlic naan', 'stuffed aloo naan', 'stuffed paneer naan', 'naan'],
+    title: 'Tandoori Garlic Butter Naan',
     urls: [
-      'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&auto=format&fit=crop&q=80',
     ]
   },
   {
-    keywords: ['dal makhani', 'dal tadka', 'dal', 'lentils', 'yellow dal'],
-    title: 'Slow-Cooked Dal Makhani',
+    keywords: ['roomali roti', 'plain tandoori roti', 'butter tandoori roti', 'tandoori roti', 'roti', 'chapati', 'phulka'],
+    title: 'Tandoori Hot Roti & Roomali Roti',
+    urls: [
+      'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['lachha paratha', 'pudina paratha', 'mirchi paratha', 'aloo paratha', 'paratha'],
+    title: 'Crispy Layered Lachha Paratha',
+    urls: [
+      'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['corn palak', 'palak', 'spinach', 'palak paneer', 'saag'],
+    title: 'Golden Corn Palak Curry',
+    urls: [
+      'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1604908177453-7462950a6a3b?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['methi mushroom malai', 'kaju mushroom matar', 'mushroom', 'kaju mushroom', 'matar mushroom'],
+    title: 'Creamy Methi Mushroom Malai',
     urls: [
       'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['hari bari sabzi', 'sabzi solani', 'sabzi khazana', 'veg sabzi', 'mix veg', 'sabzi', 'mixed vegetables'],
+    title: 'Fresh Garden Mixed Veg Sabzi',
+    urls: [
+      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['jeera rice', 'pease pulao rice', 'plain rice', 'pulao', 'pilaf', 'steamed rice', 'basmati rice'],
+    title: 'Fragrant Jeera & Pulao Rice',
+    urls: [
+      'https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['tawa chaap', 'meethi malai chaap', 'chaap lababdar', 'chaap tikka butter masala', 'chaap', 'soya chaap'],
+    title: 'Sizzling Tandoori Soya Chaap',
+    urls: [
+      'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&auto=format&fit=crop&q=80',
     ]
   },
   {
@@ -109,13 +190,6 @@ export const FOOD_PHOTO_LIBRARY: Array<{ keywords: string[]; title: string; urls
     urls: [
       'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
       'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=800&auto=format&fit=crop&q=80',
-    ]
-  },
-  {
-    keywords: ['naan', 'garlic naan', 'roti', 'tandoori roti', 'paratha', 'bread'],
-    title: 'Garlic Butter Naan',
-    urls: [
-      'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&auto=format&fit=crop&q=80',
     ]
   },
   {

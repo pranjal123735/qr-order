@@ -580,9 +580,17 @@ function MenuManagerContent() {
                   {newItemName.trim() && (
                     <button
                       type="button"
-                      onClick={() => {
-                        const p = getFoodPhotoForDish(newItemName, categories.find(c => c.id === newItemCategory)?.name);
-                        setNewItemImage(p);
+                      onClick={async () => {
+                        const cat = categories.find(c => c.id === newItemCategory)?.name;
+                        const initialPhoto = getFoodPhotoForDish(newItemName, cat);
+                        setNewItemImage(initialPhoto);
+                        try {
+                          const res = await fetch(`/api/menu/food-image?q=${encodeURIComponent(newItemName)}&category=${encodeURIComponent(cat || '')}`);
+                          if (res.ok) {
+                            const data = await res.json();
+                            if (data.primaryPhoto) setNewItemImage(data.primaryPhoto);
+                          }
+                        } catch {}
                       }}
                       className="text-[10px] font-bold text-amber-400 hover:underline flex items-center gap-1"
                     >
