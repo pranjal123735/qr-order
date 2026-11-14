@@ -503,10 +503,53 @@ export const DataStore = {
     return true;
   },
 
+  // 9b. Toggle individual item prepared state (Kitchen dish checklist live sync)
+  async toggleOrderItemPrepared(orderId: string, itemId: string, isPrepared: boolean): Promise<boolean> {
+    const orders = getStored<Order[]>('orders', INITIAL_ORDERS);
+    const updated = orders.map(o => {
+      if (o.id !== orderId) return o;
+      const updatedItems = o.items?.map(it => 
+        it.id === itemId ? { ...it, is_prepared: isPrepared } : it
+      );
+      return { ...o, items: updatedItems, updated_at: new Date().toISOString() };
+    });
+    setStored('orders', updated);
+    localSync.emit('ORDER_UPDATED', { orderId, itemId, isPrepared });
+    return true;
+  },
+
+  // 9c. Submit diner feedback & per-dish ratings and remarks
+  async submitOrderFeedback(orderId: string, feedback: import('@/types/database').OrderFeedback): Promise<boolean> {
+    const orders = getStored<Order[]>('orders', INITIAL_ORDERS);
+    const updated = orders.map(o => {
+      if (o.id !== orderId) return o;
+      const updatedItems = o.items?.map(it => {
+        const itemReview = feedback.item_reviews?.[it.id];
+        if (itemReview) {
+          return {
+            ...it,
+            rating: itemReview.rating,
+            remark: itemReview.remark,
+          };
+        }
+        return it;
+      });
+      return {
+        ...o,
+        feedback,
+        items: updatedItems,
+        updated_at: new Date().toISOString(),
+      };
+    });
+    setStored('orders', updated);
+    localSync.emit('ORDER_UPDATED', { orderId, feedback });
+    return true;
+  },
+
   // 10. Realtime Subscriptions
   subscribeToOrders(restaurantIdOrSlug: string, onUpdate: () => void) {
     const unsubLocal = localSync.subscribe((event) => {
-      if (['NEW_ORDER', 'ORDER_STATUS_CHANGED'].includes(event.type)) {
+      if (['NEW_ORDER', 'ORDER_STATUS_CHANGED', 'ORDER_UPDATED'].includes(event.type)) {
         onUpdate();
       }
     });
@@ -535,8 +578,8 @@ export const DataStore = {
 
   subscribeToOrder(orderId: string, onUpdate: (order: Order) => void) {
     const unsubLocal = localSync.subscribe(async (event) => {
-      if (event.type === 'ORDER_STATUS_CHANGED') {
-        const payload = event.payload as { orderId: string; status: OrderStatus };
+      if (event.type === 'ORDER_STATUS_CHANGED' || event.type === 'ORDER_UPDATED') {
+        const payload = event.payload as { orderId: string };
         if (payload.orderId === orderId) {
           const fresh = await DataStore.getOrder(orderId);
           if (fresh) onUpdate(fresh);

@@ -75,7 +75,7 @@ function DashboardContent() {
     <AdminAuthGuard slug={slug}>
       <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col select-none selection:bg-amber-500 selection:text-stone-950 overflow-x-hidden w-full">
       {/* 1. Dashboard Top Navbar */}
-      <header className="bg-stone-900 border-b border-stone-800 px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+      <header className="bg-stone-900/95 backdrop-blur-md border-b border-stone-800 px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-40 shadow-xl">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 shrink-0">
             <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />

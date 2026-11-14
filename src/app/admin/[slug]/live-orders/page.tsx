@@ -23,7 +23,9 @@ import {
   Timer,
   CheckCircle2,
   AlertCircle,
-  MessageSquare
+  MessageSquare,
+  Rocket,
+  Star
 } from 'lucide-react';
 
 function KitchenLiveOrdersContent() {
@@ -35,12 +37,12 @@ function KitchenLiveOrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'COOKING' | 'SERVED'>('ALL');
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'COOKING' | 'ON_THE_WAY' | 'SERVED'>('ALL');
   const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [nowTimestamp, setNowTimestamp] = useState<number>(Date.now());
 
-  // Interactive dish strike-off for cooker
+  // Interactive dish strike-off for cooker (synced across tabs/database)
   const [checkedDishIds, setCheckedDishIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -63,6 +65,18 @@ function KitchenLiveOrdersContent() {
         audioManager.playNewOrderChime();
       }
       prevOrderCountRef.current = allOrders.length;
+
+      // sync prepared dishes map
+      const initialChecked: Record<string, boolean> = {};
+      allOrders.forEach(o => {
+        o.items?.forEach(it => {
+          if (it.is_prepared) {
+            initialChecked[it.id] = true;
+          }
+        });
+      });
+      setCheckedDishIds(prev => ({ ...initialChecked, ...prev }));
+
       setOrders(allOrders);
     }
     setLoading(false);
@@ -92,18 +106,20 @@ function KitchenLiveOrdersContent() {
     }
   };
 
-  const toggleDishChecked = (dishId: string) => {
+  const toggleDishChecked = async (orderId: string, dishId: string, currentVal: boolean) => {
+    const newVal = !currentVal;
     setCheckedDishIds(prev => ({
       ...prev,
-      [dishId]: !prev[dishId],
+      [dishId]: newVal,
     }));
+    await DataStore.toggleOrderItemPrepared(orderId, dishId, newVal);
   };
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
       setProcessingOrderId(orderId);
       await DataStore.updateOrderStatus(orderId, newStatus);
-      if (newStatus === 'CONFIRMED' || newStatus === 'SERVED') {
+      if (newStatus === 'CONFIRMED' || newStatus === 'SERVED' || newStatus === 'ON_THE_WAY') {
         audioManager.playSuccessChime();
       }
       await fetchOrders();
@@ -116,11 +132,13 @@ function KitchenLiveOrdersContent() {
 
   const pendingOrders = orders.filter((o) => o.status === 'PENDING');
   const cookingOrders = orders.filter((o) => o.status === 'CONFIRMED' || o.status === 'PREPARING');
-  const servedOrders = orders.filter((o) => o.status === 'SERVED' || o.status === 'READY');
+  const onTheWayOrders = orders.filter((o) => o.status === 'ON_THE_WAY' || o.status === 'READY');
+  const servedOrders = orders.filter((o) => o.status === 'SERVED');
 
   const displayedOrders = orders.filter((o) => {
     if (activeTab === 'PENDING') return o.status === 'PENDING';
     if (activeTab === 'COOKING') return o.status === 'CONFIRMED' || o.status === 'PREPARING';
+    if (activeTab === 'ON_THE_WAY') return o.status === 'ON_THE_WAY' || o.status === 'READY';
     if (activeTab === 'SERVED') return o.status === 'SERVED';
     return o.status !== 'CANCELLED' && o.status !== 'REJECTED';
   });
@@ -142,150 +160,168 @@ function KitchenLiveOrdersContent() {
   return (
     <AdminAuthGuard slug={slug}>
       <div className="min-h-screen bg-neutral-950 text-stone-100 flex flex-col font-sans select-none antialiased overflow-x-hidden w-full">
-      {/* 1. Sleek Top Navigation Bar */}
-      <header className="bg-neutral-900 border-b border-neutral-800 px-3.5 sm:px-6 py-3 sm:py-3.5 sticky top-0 z-40 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 shadow-xl">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <Link
-            href={`/admin/${slug}/dashboard`}
-            className="p-2 sm:p-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-stone-300 hover:text-white border border-neutral-700 transition shrink-0"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-          </Link>
+      {/* 1. Pinned Sticky Header & Tabs Wrapper */}
+      <div className="sticky top-0 z-40 bg-neutral-900 border-b border-neutral-800 shadow-xl backdrop-blur-md">
+        {/* Sleek Top Navigation Bar */}
+        <header className="px-3.5 sm:px-6 py-3 sm:py-3.5 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 border-b border-neutral-800/80">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <Link
+              href={`/admin/${slug}/dashboard`}
+              className="p-2 sm:p-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-stone-300 hover:text-white border border-neutral-700 transition shrink-0"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            </Link>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="font-extrabold text-base sm:text-lg text-white tracking-tight truncate">Kitchen Terminal</h1>
-              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] sm:text-[11px] font-bold rounded-full border border-emerald-500/30 flex items-center gap-1.5 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live Sync
-              </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="font-extrabold text-base sm:text-lg text-white tracking-tight truncate">Kitchen Terminal</h1>
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] sm:text-[11px] font-bold rounded-full border border-emerald-500/30 flex items-center gap-1.5 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Live Sync
+                </span>
+              </div>
+              <p className="text-xs text-stone-400 truncate">
+                {restaurant?.name || slug} • Table Orders
+              </p>
             </div>
-            <p className="text-xs text-stone-400 truncate">
-              {restaurant?.name || slug} • Table Orders
-            </p>
           </div>
-        </div>
 
-        {/* Live Digital Clock */}
-        <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 bg-neutral-950 border border-neutral-800 rounded-xl font-mono text-xs">
-          <Clock className="w-3.5 h-3.5 text-amber-400" />
-          <span className="text-stone-400 font-medium">Clock:</span>
-          <span className="text-amber-400 font-bold">{currentTime || '12:00:00'}</span>
-        </div>
+          {/* Live Digital Clock */}
+          <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 bg-neutral-950 border border-neutral-800 rounded-xl font-mono text-xs">
+            <Clock className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-stone-400 font-medium">Clock:</span>
+            <span className="text-amber-400 font-bold">{currentTime || '12:00:00'}</span>
+          </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={toggleAudio}
-            className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition ${
-              audioEnabled
-                ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow-md'
-                : 'bg-neutral-800 text-stone-400 border border-neutral-700'
-            }`}
-          >
-            {audioEnabled ? (
-              <>
-                <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-bounce" />
-                <span className="hidden xs:inline">Audio ON</span>
-              </>
-            ) : (
-              <>
-                <BellOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Muted</span>
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={() => router.push(`/admin/${slug}/menu`)}
-            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-neutral-850 hover:bg-neutral-800 text-stone-200 border border-neutral-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-          >
-            <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
-            <span className="hidden sm:inline">Menu & Stock</span>
-          </button>
-
-          <button
-            onClick={() => fetchOrders(false)}
-            className="p-1.5 sm:p-2 bg-neutral-850 hover:bg-neutral-800 text-stone-300 border border-neutral-700 rounded-xl transition"
-            title="Refresh Orders"
-          >
-            <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* 2. Status Metric Tabs */}
-      <div className="bg-neutral-900/80 border-b border-neutral-800 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-3 overflow-hidden">
-        <div className="flex items-center gap-1.5 sm:gap-2 no-scrollbar w-full overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('ALL')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'ALL'
-                ? 'bg-amber-500 text-neutral-950 shadow-sm'
-                : 'bg-neutral-800 text-stone-300 hover:bg-neutral-750'
-            }`}
-          >
-            <span>All Active</span>
-            <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
-              {orders.filter((o) => o.status !== 'CANCELLED' && o.status !== 'REJECTED').length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('PENDING')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'PENDING'
-                ? 'bg-amber-500 text-neutral-950 shadow-sm ring-2 ring-amber-400'
-                : 'bg-amber-950/40 border border-amber-500/40 text-amber-400 hover:bg-amber-900/40'
-            }`}
-          >
-            <span className="relative flex h-2 w-2 shrink-0">
-              {pendingOrders.length > 0 && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+          {/* Action Controls */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={toggleAudio}
+              className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 transition ${
+                audioEnabled
+                  ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow-md'
+                  : 'bg-neutral-800 text-stone-400 border border-neutral-700'
+              }`}
+            >
+              {audioEnabled ? (
+                <>
+                  <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-bounce" />
+                  <span className="hidden xs:inline">Audio ON</span>
+                </>
+              ) : (
+                <>
+                  <BellOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Muted</span>
+                </>
               )}
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-            </span>
-            <span>New Orders</span>
-            <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
-              {pendingOrders.length}
-            </span>
-          </button>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('COOKING')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'COOKING'
-                ? 'bg-amber-500 text-neutral-950 shadow-sm'
-                : 'bg-neutral-800 text-emerald-400 hover:bg-neutral-750'
-            }`}
-          >
-            <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-            <span>Cooking Now</span>
-            <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
-              {cookingOrders.length}
-            </span>
-          </button>
+            <button
+              onClick={() => router.push(`/admin/${slug}/menu`)}
+              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-neutral-850 hover:bg-neutral-800 text-stone-200 border border-neutral-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+            >
+              <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+              <span className="hidden sm:inline">Menu & Stock</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('SERVED')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'SERVED'
-                ? 'bg-amber-500 text-neutral-950 shadow-sm'
-                : 'bg-neutral-800 text-blue-400 hover:bg-neutral-750'
-            }`}
-          >
-            <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span>Served</span>
-            <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
-              {servedOrders.length}
-            </span>
-          </button>
+            <button
+              onClick={() => fetchOrders(false)}
+              className="p-1.5 sm:p-2 bg-neutral-850 hover:bg-neutral-800 text-stone-300 border border-neutral-700 rounded-xl transition"
+              title="Refresh Orders"
+            >
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+          </div>
+        </header>
+
+        {/* 2. Status Metric Tabs (Fixed / Sticky with Header) */}
+        <div className="bg-neutral-900/95 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-3 overflow-hidden">
+          <div className="flex items-center gap-1.5 sm:gap-2 no-scrollbar w-full overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('ALL')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'ALL'
+                  ? 'bg-amber-500 text-neutral-950 shadow-sm'
+                  : 'bg-neutral-800 text-stone-300 hover:bg-neutral-750'
+              }`}
+            >
+              <span>All Active</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
+                {orders.filter((o) => o.status !== 'CANCELLED' && o.status !== 'REJECTED').length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('PENDING')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'PENDING'
+                  ? 'bg-amber-500 text-neutral-950 shadow-sm ring-2 ring-amber-400'
+                  : 'bg-amber-950/40 border border-amber-500/40 text-amber-400 hover:bg-amber-900/40'
+              }`}
+            >
+              <span className="relative flex h-2 w-2 shrink-0">
+                {pendingOrders.length > 0 && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                )}
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+              </span>
+              <span>New Orders</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
+                {pendingOrders.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('COOKING')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'COOKING'
+                  ? 'bg-amber-500 text-neutral-950 shadow-sm'
+                  : 'bg-neutral-800 text-emerald-400 hover:bg-neutral-750'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+              <span>Cooking Now</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
+                {cookingOrders.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ON_THE_WAY')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'ON_THE_WAY'
+                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-neutral-950 font-black shadow-sm ring-2 ring-orange-400'
+                  : 'bg-orange-950/40 border border-orange-500/40 text-orange-400 hover:bg-orange-900/40'
+              }`}
+            >
+              <Rocket className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+              <span>On the Way</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
+                {onTheWayOrders.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('SERVED')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'SERVED'
+                  ? 'bg-amber-500 text-neutral-950 shadow-sm'
+                  : 'bg-neutral-800 text-blue-400 hover:bg-neutral-750'
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span>Served</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-neutral-950/40 text-[10px] font-bold">
+                {servedOrders.length}
+              </span>
+            </button>
+          </div>
+
+          <span className="hidden lg:inline text-xs text-stone-400 font-medium shrink-0">
+            💡 Tap any item to check it off as cooked
+          </span>
         </div>
-
-        <span className="hidden lg:inline text-xs text-stone-400 font-medium shrink-0">
-          💡 Tap any item to check it off as you cook
-        </span>
       </div>
 
       {/* 3. Redesigned Ticket Cards Grid */}
@@ -310,6 +346,7 @@ function KitchenLiveOrdersContent() {
             {displayedOrders.map((order) => {
               const isPending = order.status === 'PENDING';
               const isCooking = order.status === 'CONFIRMED' || order.status === 'PREPARING';
+              const isOnTheWay = order.status === 'ON_THE_WAY' || order.status === 'READY';
               const isServed = order.status === 'SERVED';
               const isProcessing = processingOrderId === order.id;
               const elapsedMins = getElapsedMinutes(order.created_at);
@@ -317,12 +354,17 @@ function KitchenLiveOrdersContent() {
               const isUrgent = elapsedMins >= 10;
               const isWarning = elapsedMins >= 5 && elapsedMins < 10;
 
+              const totalItemsCount = order.items?.length || 0;
+              const preparedItemsCount = order.items?.filter(it => checkedDishIds[it.id] || it.is_prepared).length || 0;
+
               return (
                 <div
                   key={order.id}
                   className={`bg-neutral-900 rounded-3xl border flex flex-col justify-between overflow-hidden shadow-xl transition-all duration-200 ${
                     isPending
                       ? 'border-amber-500/70 shadow-amber-500/5'
+                      : isOnTheWay
+                      ? 'border-orange-500/70 shadow-orange-500/10'
                       : isCooking
                       ? 'border-emerald-500/50 shadow-emerald-500/5'
                       : 'border-neutral-800'
@@ -359,14 +401,14 @@ function KitchenLiveOrdersContent() {
                   <div className="p-5 flex-1 space-y-3">
                     <div className="divide-y divide-neutral-800/80">
                       {order.items?.map((item) => {
-                        const isChecked = checkedDishIds[item.id];
+                        const isChecked = !!(checkedDishIds[item.id] || item.is_prepared);
 
                         return (
                           <div
                             key={item.id}
-                            onClick={() => toggleDishChecked(item.id)}
+                            onClick={() => toggleDishChecked(order.id, item.id, isChecked)}
                             className={`py-3 first:pt-0 last:pb-0 cursor-pointer rounded-xl transition ${
-                              isChecked ? 'opacity-40' : 'hover:bg-neutral-850/40'
+                              isChecked ? 'opacity-50' : 'hover:bg-neutral-850/40'
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
@@ -390,7 +432,7 @@ function KitchenLiveOrdersContent() {
                                 {/* Dish Name */}
                                 <span
                                   className={`font-bold text-sm text-white flex-1 leading-snug ${
-                                    isChecked ? 'line-through text-stone-500' : ''
+                                    isChecked ? 'line-through text-stone-400' : ''
                                   }`}
                                 >
                                   {item.item_name}
@@ -457,35 +499,87 @@ function KitchenLiveOrdersContent() {
 
                     {/* Cooking / Preparing Action Buttons */}
                     {isCooking && (
-                      <div className="grid grid-cols-2 gap-2">
-                        {order.status !== 'PREPARING' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs px-1 text-stone-400">
+                          <span className="text-amber-400 font-bold flex items-center gap-1">
+                            <Flame className="w-3.5 h-3.5" />
+                            {preparedItemsCount} of {totalItemsCount} items cooked
+                          </span>
+                          {preparedItemsCount === totalItemsCount && totalItemsCount > 0 && (
+                            <span className="text-emerald-400 font-bold text-[11px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                              ✓ All Ready
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {order.status !== 'PREPARING' && (
+                            <button
+                              disabled={isProcessing}
+                              onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
+                              className="py-2.5 px-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5"
+                            >
+                              <Flame className="w-3.5 h-3.5" />
+                              <span>On Stove</span>
+                            </button>
+                          )}
                           <button
                             disabled={isProcessing}
-                            onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
-                            className="py-2.5 px-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5"
+                            onClick={() => handleUpdateStatus(order.id, 'ON_THE_WAY')}
+                            className={`py-2.5 px-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-neutral-950 font-black rounded-xl text-xs transition active:scale-95 flex items-center justify-center gap-1.5 shadow-md ${
+                              order.status === 'PREPARING' ? 'col-span-2 py-3 text-sm' : ''
+                            }`}
                           >
-                            <Flame className="w-3.5 h-3.5" />
-                            <span>On the Stove</span>
+                            <Rocket className="w-4 h-4" />
+                            <span>Food Cooked • On the Way</span>
                           </button>
-                        )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* On the Way Active State */}
+                    {isOnTheWay && (
+                      <div className="space-y-2">
+                        <div className="py-2 px-3 bg-orange-500/10 border border-orange-500/30 rounded-xl text-xs text-orange-400 font-bold flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Rocket className="w-4 h-4 text-orange-400 animate-pulse" />
+                            <span>Out for Delivery to Table #{order.table_number}</span>
+                          </div>
+                        </div>
+
                         <button
                           disabled={isProcessing}
                           onClick={() => handleUpdateStatus(order.id, 'SERVED')}
-                          className={`py-2.5 px-4 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-md ${
-                            order.status === 'PREPARING' ? 'col-span-2' : ''
-                          }`}
+                          className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5"
                         >
-                          <Utensils className="w-3.5 h-3.5" />
-                          <span>Mark as Served</span>
+                          <Utensils className="w-4 h-4" />
+                          <span>Delivered • Mark as Served</span>
                         </button>
                       </div>
                     )}
 
-                    {/* Served Badge */}
+                    {/* Served Badge & Diner Feedback */}
                     {isServed && (
-                      <div className="py-2 px-3 bg-neutral-900 border border-neutral-800 text-blue-400 font-bold text-xs rounded-xl text-center flex items-center justify-center gap-1.5">
-                        <Check className="w-4 h-4" />
-                        <span>Delivered to Table #{order.table_number}</span>
+                      <div className="space-y-2">
+                        <div className="py-2 px-3 bg-neutral-900 border border-neutral-800 text-blue-400 font-bold text-xs rounded-xl text-center flex items-center justify-center gap-1.5">
+                          <Check className="w-4 h-4" />
+                          <span>Delivered to Table #{order.table_number}</span>
+                        </div>
+
+                        {/* Customer Feedback Card if submitted */}
+                        {order.feedback && (
+                          <div className="p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-xs space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-amber-400 font-black tracking-wider">
+                                {'★'.repeat(order.feedback.rating)}{'☆'.repeat(5 - order.feedback.rating)}
+                              </span>
+                              <span className="text-[10px] text-stone-500 font-semibold">Diner Rating</span>
+                            </div>
+                            {order.feedback.comment && (
+                              <p className="text-stone-300 italic text-[11px]">&ldquo;{order.feedback.comment}&rdquo;</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -3,6 +3,7 @@ export type OrderStatus =
   | 'CONFIRMED'
   | 'PREPARING'
   | 'READY'
+  | 'ON_THE_WAY'
   | 'SERVED'
   | 'CANCELLED'
   | 'REJECTED';
@@ -58,14 +59,25 @@ export interface OrderItem {
   item_price: number;
   quantity: number;
   notes?: string;
+  is_prepared?: boolean;
+  rating?: number;
+  remark?: string;
+}
+
+export interface OrderItemReview {
+  item_id?: string;
+  item_name?: string;
+  rating: number; // 1 to 5 stars
+  remark?: string;
 }
 
 export interface OrderFeedback {
-  rating: number; // 1 to 5 stars
+  rating: number; // 1 to 5 stars overall
   food_look_rating?: number; // 1 to 5 for appearance & presentation
   comment: string;
   tags?: string[];
   created_at: string;
+  item_reviews?: Record<string, OrderItemReview>;
 }
 
 export interface Order {

@@ -24,6 +24,7 @@ import {
   Flame,
   Check
 } from 'lucide-react';
+import { useLanguage, LanguageSwitcher } from '@/lib/i18n';
 
 function CustomerMenuContent() {
   const router = useRouter();
@@ -31,6 +32,7 @@ function CustomerMenuContent() {
   const searchParams = useSearchParams();
   const slug = (routeParams?.slug as string) || 'rustic-grill';
   const tableParam = searchParams.get('table');
+  const { t, isHindi } = useLanguage();
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -41,6 +43,7 @@ function CustomerMenuContent() {
   const [tableNumber, setTableNumber] = useState<number | null>(
     tableParam ? parseInt(tableParam, 10) : null
   );
+  const isTableLockedFromQr = Boolean(tableParam && !isNaN(parseInt(tableParam, 10)));
   const [showTablePicker, setShowTablePicker] = useState(false);
 
   // Active filter states
@@ -89,7 +92,10 @@ function CustomerMenuContent() {
   useEffect(() => {
     if (tableParam) {
       const t = parseInt(tableParam, 10);
-      if (!isNaN(t)) setTableNumber(t);
+      if (!isNaN(t)) {
+        setTableNumber(t);
+        setShowTablePicker(false);
+      }
     } else if (!tableNumber) {
       setShowTablePicker(true);
     }
@@ -175,7 +181,7 @@ function CustomerMenuContent() {
 
   const handlePlaceOrder = async () => {
     if (!tableNumber) {
-      alert('Please select your table number first.');
+      alert(t.alert_select_table);
       setShowTablePicker(true);
       return;
     }
@@ -206,7 +212,7 @@ function CustomerMenuContent() {
       router.push(`/r/${slug}/order/${newOrder.id}?table=${tableNumber}`);
     } catch (err) {
       console.error(err);
-      alert('Failed to place order. Please try again or alert staff.');
+      alert(t.alert_order_failed);
     } finally {
       setIsSubmitting(false);
     }
@@ -216,7 +222,7 @@ function CustomerMenuContent() {
     return (
       <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-6 text-white">
         <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="font-bold text-stone-300 text-sm tracking-wide">Opening Menu...</p>
+        <p className="font-bold text-stone-300 text-sm tracking-wide">{t.opening_menu}</p>
       </div>
     );
   }
@@ -227,7 +233,7 @@ function CustomerMenuContent() {
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-32 font-sans select-none antialiased overflow-x-hidden w-full">
       {/* 1. App Top Header (UberEats / DoorDash Mobile Style) */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-stone-200/80 shadow-xs">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between gap-2">
           {/* Restaurant identity */}
           <div className="flex items-center gap-2.5 min-w-0">
             {restaurant?.logo_url ? (
@@ -243,23 +249,37 @@ function CustomerMenuContent() {
             )}
             <div className="min-w-0">
               <h1 className="font-black text-sm text-stone-950 truncate leading-tight">
-                {restaurant?.name || 'Restaurant Menu'}
+                {restaurant?.name || t.restaurant_menu}
               </h1>
               <p className="text-[11px] text-stone-500 truncate">
-                {restaurant?.tagline || 'Scan & Dine Experience'}
+                {restaurant?.tagline || t.scan_and_dine}
               </p>
             </div>
           </div>
 
-          {/* Table Badge Button */}
-          <button
-            onClick={() => setShowTablePicker(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-950 border border-amber-500/30 rounded-full font-black text-xs transition active:scale-95 shadow-xs"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>{tableNumber ? `Table #${tableNumber}` : 'Select Table'}</span>
-            <ChevronRight className="w-3.5 h-3.5 text-amber-700" />
-          </button>
+          {/* Language Switcher & Table Badge */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <LanguageSwitcher theme="light" size="sm" />
+
+            {isTableLockedFromQr ? (
+              <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-emerald-500/10 text-emerald-950 border border-emerald-500/30 rounded-full font-black text-xs shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>{t.table_number}{tableNumber}</span>
+                <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded-full font-bold ml-0.5">
+                  {isHindi ? 'क्यूआर' : 'QR'}
+                </span>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowTablePicker(true)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-950 border border-amber-500/30 rounded-full font-black text-xs transition active:scale-95 shadow-xs"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{tableNumber ? `${t.table_number}${tableNumber}` : t.select_table}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-amber-700" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Floating Active Order Notice */}
@@ -267,13 +287,13 @@ function CustomerMenuContent() {
           <div className="bg-amber-500 text-stone-950 px-4 py-2 flex items-center justify-between text-xs font-bold shadow-xs">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 animate-spin" />
-              <span>You have an active order on Table #{tableNumber}!</span>
+              <span>{t.active_order_banner.replace('{table}', String(tableNumber || ''))}</span>
             </div>
             <button
               onClick={() => router.push(`/r/${slug}/order/${activeOrderId}?table=${tableNumber}`)}
-              className="px-2.5 py-1 bg-stone-950 text-white rounded-lg text-[11px] font-black uppercase tracking-wider"
+              className="px-2.5 py-1 bg-stone-950 text-white rounded-lg text-[11px] font-black uppercase tracking-wider transition active:scale-95"
             >
-              Track Order &rarr;
+              {t.btn_track_order}
             </button>
           </div>
         )}
@@ -285,7 +305,7 @@ function CustomerMenuContent() {
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
               type="text"
-              placeholder="Search food, drinks, desserts..."
+              placeholder={t.search_placeholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-8 py-2 bg-stone-100 text-stone-900 text-xs rounded-xl border border-stone-200/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent placeholder:text-stone-400"
@@ -312,7 +332,7 @@ function CustomerMenuContent() {
             <div className={`w-3.5 h-3.5 border flex items-center justify-center rounded-xs ${vegOnly ? 'border-white' : 'border-emerald-600'}`}>
               <div className={`w-2 h-2 rounded-full ${vegOnly ? 'bg-white' : 'bg-emerald-600'}`} />
             </div>
-            <span>VEG</span>
+            <span>{t.veg_label}</span>
           </button>
         </div>
 
@@ -326,7 +346,7 @@ function CustomerMenuContent() {
                 : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
             }`}
           >
-            All Items
+            {t.all_items}
           </button>
           {categories.map((cat) => (
             <button
@@ -349,8 +369,8 @@ function CustomerMenuContent() {
         {filteredItems.length === 0 ? (
           <div className="py-20 text-center text-stone-400">
             <UtensilsCrossed className="w-12 h-12 mx-auto mb-2 text-stone-300 opacity-60" />
-            <p className="font-bold text-stone-700 text-sm">No items match your filter</p>
-            <p className="text-xs text-stone-400 mt-0.5">Try clearing your search query or veg filter.</p>
+            <p className="font-bold text-stone-700 text-sm">{t.no_items_found}</p>
+            <p className="text-xs text-stone-400 mt-0.5">{t.no_items_desc}</p>
           </div>
         ) : (
           filteredItems.map((item) => {
@@ -383,7 +403,7 @@ function CustomerMenuContent() {
                     </div>
                     {isSoldOut && (
                       <span className="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-black uppercase tracking-wider rounded-md">
-                        Sold Out
+                        {t.sold_out}
                       </span>
                     )}
                   </div>
@@ -421,13 +441,14 @@ function CustomerMenuContent() {
                     )}
                   </div>
 
-                  {/* Floating Action Button (UberEats / Swiggy style centered at bottom of image) */}
+                  {/* Floating Action Button */}
                   {!isSoldOut ? (
                     inCart ? (
                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-stone-950 text-white rounded-xl shadow-lg px-2 py-1 flex items-center gap-2 border border-stone-800">
                         <button
                           onClick={() => removeFromCart(item.id)}
                           className="w-5 h-5 rounded-md hover:bg-stone-850 flex items-center justify-center active:scale-90"
+                          aria-label="Decrease quantity"
                         >
                           <Minus className="w-3.5 h-3.5 text-stone-300" />
                         </button>
@@ -437,6 +458,7 @@ function CustomerMenuContent() {
                         <button
                           onClick={() => addToCart(item)}
                           className="w-5 h-5 rounded-md hover:bg-stone-850 flex items-center justify-center active:scale-90"
+                          aria-label="Increase quantity"
                         >
                           <Plus className="w-3.5 h-3.5 text-stone-300" />
                         </button>
@@ -444,10 +466,10 @@ function CustomerMenuContent() {
                     ) : (
                       <button
                         onClick={() => addToCart(item)}
-                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white hover:bg-stone-50 text-amber-600 font-black text-xs px-4 py-1.5 rounded-xl shadow-md border border-stone-200 active:scale-95 transition flex items-center gap-1"
+                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white hover:bg-stone-50 text-amber-600 font-black text-xs px-3.5 sm:px-4 py-1.5 rounded-xl shadow-md border border-stone-200 active:scale-95 transition flex items-center gap-1 whitespace-nowrap"
                       >
                         <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>ADD</span>
+                        <span>{t.btn_add}</span>
                       </button>
                     )
                   ) : null}
@@ -458,7 +480,7 @@ function CustomerMenuContent() {
         )}
       </main>
 
-      {/* 5. Sticky Floating Mobile Cart Pill (Swiggy / DoorDash style) */}
+      {/* 5. Sticky Floating Mobile Cart Pill */}
       {cartTotalCount > 0 && (
         <div className="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-40">
           <button
@@ -471,7 +493,7 @@ function CustomerMenuContent() {
               </div>
               <div className="text-left">
                 <p className="text-[11px] text-emerald-100 font-bold uppercase tracking-wider">
-                  Table #{tableNumber} Order
+                  {t.table_order.replace('{table}', String(tableNumber || ''))}
                 </p>
                 <p className="text-base font-black text-white leading-tight">
                   {currency}{cartTotalPrice % 1 === 0 ? cartTotalPrice.toFixed(0) : cartTotalPrice.toFixed(2)}
@@ -480,7 +502,7 @@ function CustomerMenuContent() {
             </div>
 
             <div className="flex items-center gap-1.5 text-xs font-black bg-white/20 px-3.5 py-2 rounded-xl">
-              <span>View Cart</span>
+              <span>{t.btn_view_cart}</span>
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </div>
           </button>
@@ -499,8 +521,8 @@ function CustomerMenuContent() {
             {/* Header */}
             <div className="px-5 py-3 border-b border-stone-200 flex items-center justify-between bg-stone-50">
               <div>
-                <h2 className="font-black text-stone-950 text-base">Your Order Summary</h2>
-                <p className="text-xs text-stone-500 font-semibold">Table #{tableNumber}</p>
+                <h2 className="font-black text-stone-950 text-base">{t.order_summary}</h2>
+                <p className="text-xs text-stone-500 font-semibold">{t.table_number}{tableNumber}</p>
               </div>
               <button
                 onClick={() => setIsCartOpen(false)}
@@ -520,7 +542,7 @@ function CustomerMenuContent() {
                         {item.menuItem.name}
                       </h4>
                       <p className="text-xs text-stone-500 font-bold">
-                        {currency}{item.menuItem.price % 1 === 0 ? item.menuItem.price.toFixed(0) : item.menuItem.price.toFixed(2)} each
+                        {currency}{item.menuItem.price % 1 === 0 ? item.menuItem.price.toFixed(0) : item.menuItem.price.toFixed(2)} {t.each}
                       </p>
                     </div>
 
@@ -546,7 +568,7 @@ function CustomerMenuContent() {
                   {/* Special Item Instruction */}
                   <input
                     type="text"
-                    placeholder="Cooking note (e.g. less spicy, no onions)..."
+                    placeholder={t.cooking_note_placeholder}
                     value={item.notes || ''}
                     onChange={(e) => updateItemNotes(item.menuItem.id, e.target.value)}
                     className="w-full mt-2 text-xs px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-stone-400"
@@ -557,19 +579,19 @@ function CustomerMenuContent() {
               {/* Customer Details */}
               <div className="pt-4 space-y-3">
                 <h4 className="text-xs font-black uppercase tracking-wider text-stone-400">
-                  Diner Details (Optional)
+                  {t.diner_details_title}
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
-                    placeholder="Your Name (e.g. Alex)"
+                    placeholder={t.name_placeholder}
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     className="w-full text-xs px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                   <input
                     type="tel"
-                    placeholder="Phone (Optional)"
+                    placeholder={t.phone_placeholder}
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     className="w-full text-xs px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -577,7 +599,7 @@ function CustomerMenuContent() {
                 </div>
                 <textarea
                   rows={2}
-                  placeholder="Special instructions for kitchen chef..."
+                  placeholder={t.chef_notes_placeholder}
                   value={orderNotes}
                   onChange={(e) => setOrderNotes(e.target.value)}
                   className="w-full text-xs p-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -589,7 +611,7 @@ function CustomerMenuContent() {
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900 font-medium">
                   <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
                   <span>
-                    You can freely <strong>cancel this order</strong> until the kitchen confirms it. Settle payment at the table or counter when finished.
+                    {t.cancel_policy_note}
                   </span>
                 </div>
               </div>
@@ -598,7 +620,7 @@ function CustomerMenuContent() {
             {/* Footer Place Order Button */}
             <div className="p-5 border-t border-stone-200 bg-stone-50 space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="font-bold text-stone-500">Total Bill</span>
+                <span className="font-bold text-stone-500">{t.total_bill}</span>
                 <span className="font-black text-2xl text-stone-950">
                   {currency}{cartTotalPrice % 1 === 0 ? cartTotalPrice.toFixed(0) : cartTotalPrice.toFixed(2)}
                 </span>
@@ -613,7 +635,7 @@ function CustomerMenuContent() {
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>Place Table #{tableNumber} Order</span>
+                    <span>{t.btn_place_order.replace('{table}', String(tableNumber || ''))}</span>
                     <ArrowRight className="w-5 h-5 stroke-[3]" />
                   </>
                 )}
@@ -623,16 +645,16 @@ function CustomerMenuContent() {
         </div>
       )}
 
-      {/* 7. Table Picker Modal */}
-      {showTablePicker && (
+      {/* 7. Table Picker Modal (Only shown when not scanned via QR) */}
+      {showTablePicker && !isTableLockedFromQr && (
         <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
             <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <UtensilsCrossed className="w-6 h-6" />
             </div>
-            <h3 className="font-black text-lg text-stone-900">Select Table Number</h3>
+            <h3 className="font-black text-lg text-stone-900">{t.select_table_modal_title}</h3>
             <p className="text-xs text-stone-500 mt-1 mb-4">
-              Choose the table number written on your table stand.
+              {t.select_table_modal_desc}
             </p>
 
             <div className="grid grid-cols-4 gap-2 mb-4">
@@ -660,7 +682,7 @@ function CustomerMenuContent() {
                 onClick={() => setShowTablePicker(false)}
                 className="w-full py-2.5 bg-stone-900 text-white rounded-xl text-xs font-bold"
               >
-                Continue at Table #{tableNumber}
+                {t.btn_continue_table.replace('{table}', String(tableNumber))}
               </button>
             )}
           </div>

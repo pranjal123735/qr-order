@@ -173,132 +173,135 @@ function MenuManagerContent() {
   return (
     <AdminAuthGuard slug={slug}>
       <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col select-none font-sans overflow-x-hidden w-full">
-      {/* 1. Header Bar */}
-      <header className="bg-stone-900/95 border-b border-stone-800 px-3.5 sm:px-6 py-3 sm:py-4 sticky top-0 z-40 backdrop-blur-md flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 shadow-2xl">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <Link
-            href={`/admin/${slug}/dashboard`}
-            className="p-2 sm:p-2.5 rounded-2xl bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white border border-stone-700 transition shrink-0"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-          </Link>
+      {/* 1. Pinned Sticky Top Navigation & Filter Strip */}
+      <div className="sticky top-0 z-40 bg-stone-900 border-b border-stone-800 shadow-2xl backdrop-blur-md">
+        {/* Main Header Bar */}
+        <header className="px-3.5 sm:px-6 py-3 sm:py-3.5 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 border-b border-stone-800/80">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <Link
+              href={`/admin/${slug}/dashboard`}
+              className="p-2 sm:p-2.5 rounded-2xl bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white border border-stone-700 transition shrink-0"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            </Link>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="font-black text-base sm:text-xl text-white tracking-tight truncate">MENU & STOCK</h1>
-              <span className="hidden xs:inline-block px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-black rounded-full border border-amber-500/30 whitespace-nowrap">
-                1-CLICK STOCK
-              </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="font-black text-base sm:text-xl text-white tracking-tight truncate">MENU & STOCK</h1>
+                <span className="hidden xs:inline-block px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-black rounded-full border border-amber-500/30 whitespace-nowrap">
+                  1-CLICK STOCK
+                </span>
+              </div>
+              <p className="text-xs text-stone-400 truncate">
+                Restaurant: <strong className="text-amber-400 uppercase">{slug}</strong>
+              </p>
             </div>
-            <p className="text-xs text-stone-400 truncate">
-              Restaurant: <strong className="text-amber-400 uppercase">{slug}</strong>
-            </p>
+          </div>
+
+          {/* Action Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <button
+              onClick={() => setIsScannerOpen(true)}
+              className="px-2.5 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black rounded-2xl text-xs shadow-lg shadow-amber-500/20 transition flex items-center gap-1.5 sm:gap-2 active:scale-95"
+              title="Snap photo of paper menu to auto-add dishes"
+            >
+              <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+              <span>AI Scan</span>
+            </button>
+
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-2.5 sm:px-4 py-2 sm:py-2.5 bg-stone-850 hover:bg-stone-800 text-stone-200 border border-stone-700/80 rounded-2xl text-xs font-bold transition flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">Add Dish Manually</span>
+              <span className="sm:hidden">Add</span>
+            </button>
+
+            <button
+              onClick={() => router.push(`/admin/${slug}/live-orders`)}
+              className="p-2 sm:p-2.5 bg-stone-850 hover:bg-stone-800 text-stone-200 border border-stone-700/80 rounded-2xl text-xs font-bold transition flex items-center gap-1.5"
+              title="Kitchen Screen"
+            >
+              <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
+            </button>
+          </div>
+        </header>
+
+        {/* 2. Top Metric Strip */}
+        <div className="bg-stone-900/90 border-b border-stone-800/80 px-3.5 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4">
+          {/* Metric Badges */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-stone-950 border border-stone-800 rounded-xl text-xs font-bold shrink-0">
+              <span className="text-stone-400">Total Items:</span>
+              <span className="text-white font-black">{totalItems}</span>
+            </div>
+
+            <button
+              onClick={() => setFilterMode(filterMode === 'IN_STOCK' ? 'ALL' : 'IN_STOCK')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+                filterMode === 'IN_STOCK'
+                  ? 'bg-emerald-500 text-stone-950 shadow-md'
+                  : 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900/40'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>{inStockCount} In Stock</span>
+            </button>
+
+            <button
+              onClick={() => setFilterMode(filterMode === 'SOLD_OUT' ? 'ALL' : 'SOLD_OUT')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+                filterMode === 'SOLD_OUT'
+                  ? 'bg-rose-500 text-white shadow-md'
+                  : 'bg-rose-950/40 text-rose-400 border border-rose-500/30 hover:bg-rose-900/40'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-400" />
+              <span>{soldOutCount} Sold Out</span>
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <div className="w-full sm:w-72 relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
+            <input
+              type="text"
+              placeholder="Search dishes to toggle..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-1.5 bg-stone-950 border border-stone-800 rounded-xl text-xs text-white placeholder:text-stone-500 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"
+            />
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        {/* 3. Category Filter Navigation Bar */}
+        <div className="bg-stone-900/70 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center gap-2 no-scrollbar overflow-x-auto">
           <button
-            onClick={() => setIsScannerOpen(true)}
-            className="px-2.5 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black rounded-2xl text-xs shadow-lg shadow-amber-500/20 transition flex items-center gap-1.5 sm:gap-2 active:scale-95"
-            title="Snap photo of paper menu to auto-add dishes"
-          >
-            <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-            <span>AI Scan</span>
-          </button>
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-2.5 sm:px-4 py-2 sm:py-2.5 bg-stone-850 hover:bg-stone-800 text-stone-200 border border-stone-700/80 rounded-2xl text-xs font-bold transition flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">Add Dish Manually</span>
-            <span className="sm:hidden">Add</span>
-          </button>
-
-          <button
-            onClick={() => router.push(`/admin/${slug}/live-orders`)}
-            className="p-2 sm:p-2.5 bg-stone-850 hover:bg-stone-800 text-stone-200 border border-stone-700/80 rounded-2xl text-xs font-bold transition flex items-center gap-1.5"
-            title="Kitchen Screen"
-          >
-            <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
-          </button>
-        </div>
-      </header>
-
-      {/* 2. Top Metric Strip */}
-      <div className="bg-stone-900 border-b border-stone-800/80 px-3.5 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-        {/* Metric Badges */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-stone-950 border border-stone-800 rounded-xl text-xs font-bold shrink-0">
-            <span className="text-stone-400">Total Items:</span>
-            <span className="text-white font-black">{totalItems}</span>
-          </div>
-
-          <button
-            onClick={() => setFilterMode(filterMode === 'IN_STOCK' ? 'ALL' : 'IN_STOCK')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
-              filterMode === 'IN_STOCK'
-                ? 'bg-emerald-500 text-stone-950 shadow-md'
-                : 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-900/40'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>{inStockCount} In Stock</span>
-          </button>
-
-          <button
-            onClick={() => setFilterMode(filterMode === 'SOLD_OUT' ? 'ALL' : 'SOLD_OUT')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
-              filterMode === 'SOLD_OUT'
-                ? 'bg-rose-500 text-white shadow-md'
-                : 'bg-rose-950/40 text-rose-400 border border-rose-500/30 hover:bg-rose-900/40'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-rose-400" />
-            <span>{soldOutCount} Sold Out</span>
-          </button>
-        </div>
-
-        {/* Search Input */}
-        <div className="w-full sm:w-72 relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
-          <input
-            type="text"
-            placeholder="Search dishes to toggle..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-stone-950 border border-stone-800 rounded-xl text-xs text-white placeholder:text-stone-500 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"
-          />
-        </div>
-      </div>
-
-      {/* 3. Category Filter Navigation Bar */}
-      <div className="bg-stone-900/60 border-b border-stone-800/60 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center gap-2 no-scrollbar overflow-x-auto">
-        <button
-          onClick={() => setSelectedCategory('ALL')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-            selectedCategory === 'ALL'
-              ? 'bg-amber-500 text-stone-950 shadow-sm'
-              : 'bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-750'
-          }`}
-        >
-          All Categories ({menuItems.length})
-        </button>
-        {categories.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setSelectedCategory(c.id)}
+            onClick={() => setSelectedCategory('ALL')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-              selectedCategory === c.id
+              selectedCategory === 'ALL'
                 ? 'bg-amber-500 text-stone-950 shadow-sm'
                 : 'bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-750'
             }`}
           >
-            {c.name}
+            All Categories ({menuItems.length})
           </button>
-        ))}
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setSelectedCategory(c.id)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                selectedCategory === c.id
+                  ? 'bg-amber-500 text-stone-950 shadow-sm'
+                  : 'bg-stone-800 text-stone-400 hover:text-white hover:bg-stone-750'
+              }`}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 4. Menu Items Grid */}
