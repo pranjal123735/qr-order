@@ -66,6 +66,21 @@ export const FOOD_PHOTO_LIBRARY: Array<{ keywords: string[]; title: string; urls
   },
   // Indian Curries & Specialties
   {
+    keywords: ['rajma', 'rajma rice', 'rajma chawal', 'kidney beans', 'rajma rasaila'],
+    title: 'Punjabi Rajma & Steamed Basmati Rice',
+    urls: [
+      'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
+    keywords: ['chaap', 'soya chaap', 'malai chaap', 'tawa chaap', 'chaap lababdar'],
+    title: 'Tandoori Soya Chaap Tikka',
+    urls: [
+      'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=800&auto=format&fit=crop&q=80',
+    ]
+  },
+  {
     keywords: ['butter chicken', 'murgh makhani', 'chicken tikka masala', 'chicken curry'],
     title: 'Rich Butter Chicken',
     urls: [

@@ -29,6 +29,98 @@ export interface SampleMenuPreset {
 // Pre-configured real physical menu sample cards for instant 1-click test drives
 export const SAMPLE_MENU_PRESETS: SampleMenuPreset[] = [
   {
+    id: 'north-indian-main-course',
+    title: 'North Indian Main Course & Dhaba Specials',
+    cuisine: 'Authentic Indian Curries, Breads & Dal',
+    coverImage: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&auto=format&fit=crop&q=80',
+    items: [
+      {
+        name: 'Rajma Rice with Desi Ghee',
+        category: 'Rice & Combos',
+        price: 90,
+        description: 'Authentic Punjabi slow-simmered kidney beans in rich spiced tomato gravy served with steamed basmati rice.',
+        is_veg: true,
+      },
+      {
+        name: 'Paneer Lazeez (Chef Special)',
+        category: 'Paneer Curries',
+        price: 350,
+        description: 'Tender cottage cheese cooked in creamy cashew and onion gravy with special hand-ground spices.',
+        is_veg: true,
+      },
+      {
+        name: 'Paneer Lababdar',
+        category: 'Paneer Curries',
+        price: 295,
+        description: 'Soft paneer cubes simmered in creamy tomato-onion gravy garnished with grated cottage cheese.',
+        is_veg: true,
+      },
+      {
+        name: 'Kadai Paneer',
+        category: 'Paneer Curries',
+        price: 250,
+        description: 'Cottage cheese and crisp bell peppers tossed in aromatic freshly roasted kadai masala.',
+        is_veg: true,
+      },
+      {
+        name: 'Shahi Paneer',
+        category: 'Paneer Curries',
+        price: 320,
+        description: 'Rich and royal preparation of paneer in a sweet and mildly spiced almond-cashew cream sauce.',
+        is_veg: true,
+      },
+      {
+        name: 'Daal Makhni (Slow-Cooked)',
+        category: 'Daal & Lentils',
+        price: 260,
+        description: 'Slow-cooked whole black lentils with white butter, fresh cream, and subtle smoky aroma.',
+        is_veg: true,
+      },
+      {
+        name: 'Yellow Daal Tadka',
+        category: 'Daal & Lentils',
+        price: 180,
+        description: 'Golden yellow arhar lentils tempered with cumin seeds, garlic, dried red chilies, and pure ghee.',
+        is_veg: true,
+      },
+      {
+        name: 'Tawa Chaap Masala',
+        category: 'Indian Chaap',
+        price: 265,
+        description: 'Marinated roasted soya chaap pieces cooked on a sizzling griddle in tangy onion-tomato masala.',
+        is_veg: true,
+      },
+      {
+        name: 'Butter Naan',
+        category: 'Indian Breads',
+        price: 50,
+        description: 'Soft and fluffy tandoor-baked leavened flatbread glazed generously with melted butter.',
+        is_veg: true,
+      },
+      {
+        name: 'Lachha Paratha',
+        category: 'Indian Breads',
+        price: 60,
+        description: 'Crispy, multi-layered whole wheat tandoori paratha roasted to golden perfection.',
+        is_veg: true,
+      },
+      {
+        name: 'Garlic Naan',
+        category: 'Indian Breads',
+        price: 55,
+        description: 'Fluffy tandoori naan infused with minced roasted garlic and fresh green coriander.',
+        is_veg: true,
+      },
+      {
+        name: 'Jeera Rice',
+        category: 'Rice & Combos',
+        price: 120,
+        description: 'Fragrant long-grain aged basmati rice tempered with roasted cumin seeds and fresh herbs.',
+        is_veg: true,
+      },
+    ]
+  },
+  {
     id: 'italian-pizzeria',
     title: 'Woodfired Pizzeria & Trattoria',
     cuisine: 'Italian & Continental',

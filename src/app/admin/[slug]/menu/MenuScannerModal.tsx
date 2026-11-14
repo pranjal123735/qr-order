@@ -95,6 +95,7 @@ export function MenuScannerModal({
           presetId: params.presetId,
           imageBase64: params.imageBase64,
           rawText: params.text,
+          currency: restaurant.currency || '₹',
         }),
       });
 
@@ -212,37 +213,37 @@ export function MenuScannerModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-stone-900 border border-stone-800 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-stone-900 border border-stone-800 rounded-2xl sm:rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden min-w-0 mx-2 sm:mx-auto">
         
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-stone-800 bg-stone-900/90 flex items-center justify-between gap-4 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black">
-              <Sparkles className="w-5 h-5 text-amber-400" />
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-800 bg-stone-900/95 flex items-center justify-between gap-3 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h2 className="text-base sm:text-lg font-black text-white">AI Menu Photo Scanner</h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase whitespace-nowrap shrink-0">
+                <h2 className="text-base sm:text-lg font-black text-white truncate">AI Menu Scanner</h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase whitespace-nowrap shrink-0">
                   Auto-Detect + Web Photos
                 </span>
               </div>
-              <p className="text-xs text-stone-400">
-                Snap a photo of your printed menu card — we automatically detect text, prices & fetch photos!
+              <p className="text-xs text-stone-400 truncate">
+                Snap or upload a photo of your printed menu card to auto-import dishes
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400 hover:text-white transition"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400 hover:text-white transition shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 space-y-4 sm:space-y-6 custom-scrollbar">
           {!isReviewing ? (
             /* STAGE 1: UPLOAD / SNAP / SELECT PRESET */
             <div className="space-y-6">
@@ -530,32 +531,32 @@ Spaghetti Aglio e Olio - 320`}
               </div>
 
               {/* Items Review Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full min-w-0 overflow-hidden">
                 {detectedItems.map((item) => (
                   <div
                     key={item.id}
-                    className={`p-4 rounded-3xl border transition flex flex-col justify-between gap-3 shadow-lg ${
+                    className={`p-3 sm:p-3.5 rounded-2xl border transition flex flex-col justify-between gap-2.5 shadow-lg min-w-0 overflow-hidden ${
                       item.selected !== false
                         ? 'bg-stone-950/90 border-stone-800'
                         : 'bg-stone-950/40 border-stone-900 opacity-50'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
                       {/* Selection Checkbox */}
                       <button
                         type="button"
                         onClick={() => handleToggleSelect(item.id)}
-                        className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 transition ${
+                        className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition ${
                           item.selected !== false
                             ? 'bg-amber-500 text-stone-950'
                             : 'border border-stone-700 bg-stone-900 text-transparent'
                         }`}
                       >
-                        <Check className="w-4 h-4 stroke-[3]" />
+                        <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
                       </button>
 
                       {/* Photo Thumbnail + Change Photo Pill */}
-                      <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-stone-800 flex-shrink-0 bg-stone-900 group">
+                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl overflow-hidden border border-stone-800 shrink-0 bg-stone-900 group">
                         <img
                           src={item.image_url}
                           alt={item.name}
@@ -564,50 +565,50 @@ Spaghetti Aglio e Olio - 320`}
                         <button
                           type="button"
                           onClick={() => handleOpenPhotoPicker(item)}
-                          className="absolute inset-0 bg-stone-950/75 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-[10px] font-black text-amber-400 gap-1 p-1 text-center"
+                          className="absolute inset-0 bg-stone-950/80 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-[9px] font-black text-amber-400 gap-0.5 p-1 text-center"
                         >
-                          <ImageIcon className="w-3.5 h-3.5" />
-                          <span>Change Photo</span>
+                          <ImageIcon className="w-3 h-3" />
+                          <span>Change</span>
                         </button>
                       </div>
 
                       {/* Details Edit */}
-                      <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex-1 min-w-0 space-y-1.5">
                         {/* Title & Price */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between gap-1.5 min-w-0">
                           <input
                             type="text"
                             value={item.name}
                             onChange={(e) => handleUpdateItem(item.id, { name: e.target.value })}
-                            className="flex-1 font-black text-xs text-white bg-transparent border-b border-stone-800 focus:border-amber-500 focus:outline-none py-0.5 truncate"
+                            className="flex-1 min-w-0 font-black text-xs text-white bg-transparent border-b border-stone-800 focus:border-amber-500 focus:outline-none py-0.5 truncate"
                           />
-                          <div className="flex items-center gap-1 font-mono text-xs font-black text-amber-400 bg-stone-900 px-2 py-0.5 rounded-lg border border-stone-800">
-                            <span>{restaurant.currency || '₹'}</span>
+                          <div className="flex items-center gap-1 font-mono text-xs font-black text-amber-400 bg-stone-900 px-2 py-0.5 rounded-lg border border-stone-800 shrink-0">
+                            <span className="text-amber-500 font-bold">{restaurant.currency || '₹'}</span>
                             <input
                               type="number"
                               value={item.price}
                               onChange={(e) =>
                                 handleUpdateItem(item.id, { price: parseFloat(e.target.value) || 0 })
                               }
-                              className="w-14 bg-transparent text-amber-400 text-right focus:outline-none"
+                              className="w-12 sm:w-14 bg-transparent text-amber-400 text-right focus:outline-none font-bold"
                             />
                           </div>
                         </div>
 
                         {/* Category & Veg Toggle */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                           <input
                             type="text"
                             value={item.category}
                             onChange={(e) => handleUpdateItem(item.id, { category: e.target.value })}
-                            className="text-[10px] font-bold text-stone-300 bg-stone-900 px-2 py-0.5 rounded-md border border-stone-800 focus:outline-none"
+                            className="text-[10px] font-bold text-stone-300 bg-stone-900 px-2 py-0.5 rounded-md border border-stone-800 focus:outline-none flex-1 sm:flex-initial min-w-0"
                             placeholder="Category"
                           />
 
                           <button
                             type="button"
                             onClick={() => handleUpdateItem(item.id, { is_veg: !item.is_veg })}
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider transition ${
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider transition shrink-0 ${
                               item.is_veg
                                 ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/40'
                                 : 'bg-rose-950/60 text-rose-400 border border-rose-500/40'
@@ -622,7 +623,7 @@ Spaghetti Aglio e Olio - 320`}
                           rows={1}
                           value={item.description}
                           onChange={(e) => handleUpdateItem(item.id, { description: e.target.value })}
-                          className="w-full text-[11px] text-stone-400 bg-transparent border-b border-stone-850 focus:border-amber-500 focus:outline-none py-0.5"
+                          className="w-full text-[10px] sm:text-[11px] text-stone-400 bg-transparent border-b border-stone-850 focus:border-amber-500 focus:outline-none py-0.5 truncate"
                           placeholder="Short description..."
                         />
                       </div>
@@ -631,7 +632,7 @@ Spaghetti Aglio e Olio - 320`}
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(item.id)}
-                        className="text-stone-600 hover:text-rose-400 p-1"
+                        className="text-stone-600 hover:text-rose-400 p-1 shrink-0"
                         title="Remove"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -645,11 +646,11 @@ Spaghetti Aglio e Olio - 320`}
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-stone-800 bg-stone-900/90 flex items-center justify-between gap-4 flex-shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-stone-800 bg-stone-900/95 flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5 sm:gap-4 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-stone-800 hover:bg-stone-750 text-stone-300 text-xs font-bold rounded-xl transition"
+            className="w-full sm:w-auto px-4 py-2 bg-stone-800 hover:bg-stone-750 text-stone-300 text-xs font-bold rounded-xl transition"
           >
             Cancel
           </button>
@@ -659,7 +660,7 @@ Spaghetti Aglio e Olio - 320`}
               type="button"
               disabled={isImporting || selectedCount === 0}
               onClick={handleImportAll}
-              className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center gap-2"
+              className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-stone-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2 active:scale-95"
             >
               {isImporting ? (
                 <>

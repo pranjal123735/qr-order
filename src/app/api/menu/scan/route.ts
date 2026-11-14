@@ -5,7 +5,7 @@ import { getFoodPhotoForDish } from '@/lib/foodImageSearch';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { imageBase64, rawText, presetId } = body;
+    const { imageBase64, rawText, presetId, currency, clientApiKey } = body;
 
     // 1. If user selected a preset menu template
     if (presetId) {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. If an image is provided: Check if Gemini API Key is available
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiKey = clientApiKey || process.env.GEMINI_API_KEY;
 
     if (imageBase64 && geminiKey) {
       try {
@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
 
         const promptText = `Analyze this physical restaurant menu photo. Extract all visible food and beverage items into a clean JSON array.
 For each item, return:
-- "name": string (dish title)
-- "category": string (e.g. Starters, Mains, Burgers, Pizzas, Desserts, Beverages)
+- "name": string (dish title, e.g. "Rajma Rice", "Paneer Lazeez", "Daal Makhni", "Butter Naan")
+- "category": string (e.g. "Main Course", "Paneer Curries", "Daal", "Indian Breads", "Rice")
 - "price": number (numeric value only, extract the integer or float, omit currency symbols)
 - "description": string (short description or ingredients from the menu, or a delicious 1-sentence culinary description)
 - "is_veg": boolean (true for vegetarian/vegan, false for meat/poultry/fish/egg)
@@ -114,10 +114,12 @@ Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "descr
       }
     }
 
-    // 4. Smart Local Recognizer Fallback:
-    // If no external API key is set, or if an image was uploaded, intelligently detect items
-    // and deliver authentic dishes with web photos
-    const fallbackPreset = SAMPLE_MENU_PRESETS[0]; // Italian/Continental
+    // 4. Smart Recognizer Fallback:
+    // If no Gemini API key is set, check currency. If currency is Indian Rupee (₹) or if default,
+    // deliver authentic North Indian dishes matching Indian restaurant menus, else Italian preset.
+    const isIndian = !currency || currency === '₹' || currency.toLowerCase().includes('inr');
+    const fallbackPreset = isIndian ? SAMPLE_MENU_PRESETS[0] : SAMPLE_MENU_PRESETS[1];
+    
     const items: ScannedMenuItem[] = fallbackPreset.items.map((it) => ({
       id: 'scanned-' + Math.random().toString(36).substring(2, 9),
       name: it.name,
@@ -134,6 +136,7 @@ Return ONLY valid JSON: [ { "name": "...", "category": "...", "price": 0, "descr
       items,
       count: items.length,
       source: 'smart_vision_fallback',
+      notice: !geminiKey ? 'Demo preset loaded. Add GEMINI_API_KEY to .env.local for live camera OCR extraction.' : undefined
     });
   } catch (error: any) {
     console.error('Menu scan error:', error);
