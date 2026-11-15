@@ -44,13 +44,40 @@ export async function GET(req: NextRequest) {
     memoryCalls = fileCalls;
   }
 
+  // Resolve matching IDs (both slug and UUID for the restaurant)
+  const matchingIds = new Set<string>();
+  if (restaurantId) {
+    matchingIds.add(restaurantId);
+
+    // If rustic-grill / demo
+    if (restaurantId === 'rustic-grill' || restaurantId === 'demo' || restaurantId === 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11') {
+      matchingIds.add('rustic-grill');
+      matchingIds.add('demo');
+      matchingIds.add('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
+    } else if (isSupabaseConfigured && supabase) {
+      try {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(restaurantId);
+        const query = isUuid
+          ? supabase.from('restaurants').select('id, slug').eq('id', restaurantId)
+          : supabase.from('restaurants').select('id, slug').eq('slug', restaurantId);
+        const { data: restData } = await query.maybeSingle();
+        if (restData) {
+          matchingIds.add(restData.id);
+          matchingIds.add(restData.slug);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   // If Supabase configured, attempt to query remote table as well
   if (isSupabaseConfigured && supabase && restaurantId) {
     try {
       const { data, error } = await supabase
         .from('service_calls')
         .select('*')
-        .eq('restaurant_id', restaurantId)
+        .in('restaurant_id', Array.from(matchingIds))
         .order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
@@ -68,12 +95,7 @@ export async function GET(req: NextRequest) {
   }
 
   const filtered = restaurantId
-    ? memoryCalls.filter(c => 
-        c.restaurant_id === restaurantId ||
-        c.restaurant_id === 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' ||
-        restaurantId === 'rustic-grill' ||
-        c.restaurant_id === 'rustic-grill'
-      )
+    ? memoryCalls.filter(c => matchingIds.has(c.restaurant_id))
     : memoryCalls;
 
   return NextResponse.json({ calls: filtered });
@@ -89,9 +111,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const effectiveRestaurantId = (restaurant_id === 'rustic-grill' || restaurant_id === 'demo')
-      ? 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
-      : restaurant_id;
+    let effectiveRestaurantId = restaurant_id;
+    if (restaurant_id === 'rustic-grill' || restaurant_id === 'demo') {
+      effectiveRestaurantId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+    } else if (isSupabaseConfigured && supabase) {
+      try {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(restaurant_id);
+        if (!isUuid) {
+          const { data: restData } = await supabase.from('restaurants').select('id').eq('slug', restaurant_id).maybeSingle();
+          if (restData?.id) {
+            effectiveRestaurantId = restData.id;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
 
     // Refresh memory
     memoryCalls = loadCallsFromFile();

@@ -580,8 +580,22 @@ function KitchenLiveOrdersContent() {
         it.id === item.id 
           ? { ...it, item_status: newStatus, is_prepared: newStatus === 'READY' || newStatus === 'ON_THE_WAY' || newStatus === 'SERVED' } 
           : it
-      );
-      return { ...o, items: updatedItems };
+      ) || [];
+
+      // Smart auto-derive overall order status from individual items
+      const nonRejected = updatedItems.filter(it => it.item_status !== 'REJECTED');
+      let derivedStatus = o.status;
+      if (updatedItems.length > 0 && nonRejected.length === 0) {
+        derivedStatus = 'REJECTED';
+      } else if (nonRejected.length > 0 && nonRejected.every(it => it.item_status === 'SERVED')) {
+        derivedStatus = 'SERVED';
+      } else if (nonRejected.some(it => it.item_status === 'ON_THE_WAY')) {
+        derivedStatus = 'ON_THE_WAY';
+      } else if (nonRejected.some(it => it.item_status === 'COOKING' || it.item_status === 'READY')) {
+        derivedStatus = 'PREPARING';
+      }
+
+      return { ...o, items: updatedItems, status: derivedStatus };
     }));
 
     setCheckedDishIds(prev => ({ ...prev, [item.id]: newStatus === 'SERVED' || newStatus === 'READY' }));
@@ -610,8 +624,22 @@ function KitchenLiveOrdersContent() {
         it.id === dishId 
           ? { ...it, item_status: newStatus, is_prepared: newStatus === 'READY' || newStatus === 'ON_THE_WAY' || newStatus === 'SERVED' } 
           : it
-      );
-      return { ...o, items: updatedItems };
+      ) || [];
+
+      // Smart auto-derive overall order status from individual items
+      const nonRejected = updatedItems.filter(it => it.item_status !== 'REJECTED');
+      let derivedStatus = o.status;
+      if (updatedItems.length > 0 && nonRejected.length === 0) {
+        derivedStatus = 'REJECTED';
+      } else if (nonRejected.length > 0 && nonRejected.every(it => it.item_status === 'SERVED')) {
+        derivedStatus = 'SERVED';
+      } else if (nonRejected.some(it => it.item_status === 'ON_THE_WAY')) {
+        derivedStatus = 'ON_THE_WAY';
+      } else if (nonRejected.some(it => it.item_status === 'COOKING' || it.item_status === 'READY')) {
+        derivedStatus = 'PREPARING';
+      }
+
+      return { ...o, items: updatedItems, status: derivedStatus };
     }));
 
     setCheckedDishIds(prev => ({ ...prev, [dishId]: newStatus === 'SERVED' || newStatus === 'READY' }));
@@ -1740,139 +1768,27 @@ function KitchenLiveOrdersContent() {
                     )}
                   </div>
 
-                  {/* Clean Bottom Footer & Action Buttons */}
-                  <div className="p-4 bg-neutral-850/80 border-t border-neutral-800 flex flex-col gap-3">
-                    <div className="flex items-center justify-between text-xs text-stone-400 px-0.5">
+                  {/* Clean Bottom Footer: Total Amount & Order ID (All status managed per-dish) */}
+                  <div className="p-3.5 bg-neutral-850/80 border-t border-neutral-800 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
                       <span className="text-stone-400 text-xs font-semibold">Total Amount</span>
                       <span className="text-white text-base font-black font-mono">{currency}{order.total_amount.toFixed(0)}</span>
                     </div>
 
-                    {/* Pending Action Buttons */}
-                    {isPending && (
-                      <div className="grid grid-cols-3 gap-2">
-                        <button
-                          disabled={isProcessing}
-                          onClick={() => promptStatusChange(order, 'REJECTED', 'Reject / Decline Order')}
-                          className="py-2.5 px-3 bg-neutral-800 hover:bg-rose-950 border border-neutral-700 hover:border-rose-800 text-rose-400 rounded-xl font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1"
-                        >
-                          <X className="w-4 h-4" />
-                          <span>Reject</span>
-                        </button>
-                        <button
-                          disabled={isProcessing}
-                          onClick={() => promptStatusChange(order, 'CONFIRMED', 'Accept & Confirm Order')}
-                          className="col-span-2 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-neutral-950 font-black text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5"
-                        >
-                          <Check className="w-4 h-4 stroke-[3]" />
-                          <span>Accept & Confirm</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Cooking / Preparing Action Buttons */}
-                    {isCooking && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs px-0.5 text-stone-400">
-                          <span className="text-amber-400 font-medium flex items-center gap-1.5 text-[11px]">
-                            <Flame className="w-3.5 h-3.5" />
-                            {preparedItemsCount} of {totalItemsCount} dishes ready
+                    <div className="flex items-center gap-2">
+                      {/* Customer Feedback Card if submitted */}
+                      {order.feedback && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-neutral-900 border border-neutral-800 rounded-lg text-xs">
+                          <span className="text-amber-400 font-bold tracking-wider text-[11px]">
+                            {'★'.repeat(order.feedback.rating)}
                           </span>
-                          {preparedItemsCount === totalItemsCount && totalItemsCount > 0 && (
-                            <span className="text-emerald-400 font-bold text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                              ✓ All Ready
+                          {order.feedback.comment && (
+                            <span className="text-stone-400 text-[10px] truncate max-w-[120px]" title={order.feedback.comment}>
+                              &ldquo;{order.feedback.comment}&rdquo;
                             </span>
                           )}
                         </div>
-
-                        {order.status === 'CONFIRMED' ? (
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              disabled={isProcessing}
-                              onClick={() => promptStatusChange(order, 'PREPARING', 'Move to Stove / Cooking')}
-                              className="py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-neutral-950 rounded-xl font-black text-xs transition active:scale-95 flex items-center justify-center gap-1.5 shadow-md"
-                            >
-                              <Flame className="w-3.5 h-3.5 fill-neutral-950" />
-                              <span>On Stove</span>
-                            </button>
-                            <button
-                              disabled={isProcessing}
-                              onClick={() => promptStatusChange(order, 'ON_THE_WAY', 'Mark Cooked & On the Way')}
-                              className="py-2.5 px-3 bg-neutral-800 hover:bg-neutral-750 text-orange-400 border border-neutral-700 rounded-xl font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5"
-                            >
-                              <Rocket className="w-3.5 h-3.5 text-orange-400" />
-                              <span>On Way</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            disabled={isProcessing}
-                            onClick={() => promptStatusChange(order, 'ON_THE_WAY', 'Mark Cooked & On the Way')}
-                            className="w-full py-2.5 px-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-neutral-950 font-black rounded-xl text-xs transition active:scale-95 flex items-center justify-center gap-2 shadow-lg"
-                          >
-                            <Rocket className="w-4 h-4" />
-                            <span>Food Cooked • On the Way</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* On the Way Active State */}
-                    {isOnTheWay && (
-                      <div className="space-y-2">
-                        <div className="py-2 px-3 bg-orange-500/10 border border-orange-500/30 rounded-xl text-xs text-orange-400 font-bold flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Rocket className="w-4 h-4 text-orange-400 animate-pulse" />
-                            <span>Out for Delivery to Table #{order.table_number}</span>
-                          </div>
-                        </div>
-
-                        <button
-                          disabled={isProcessing}
-                          onClick={() => promptStatusChange(order, 'SERVED', 'Mark Order as Delivered & Served')}
-                          className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5"
-                        >
-                          <Utensils className="w-4 h-4" />
-                          <span>Delivered • Mark as Served</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Served Badge & Diner Feedback */}
-                    {isServed && (
-                      <div className="space-y-2">
-                        <div className="py-2 px-3 bg-neutral-900 border border-neutral-800 text-blue-400 font-bold text-xs rounded-xl text-center flex items-center justify-center gap-1.5">
-                          <Check className="w-4 h-4" />
-                          <span>Delivered to Table #{order.table_number}</span>
-                        </div>
-
-                        {/* Customer Feedback Card if submitted */}
-                        {order.feedback && (
-                          <div className="p-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-xs space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-amber-400 font-black tracking-wider">
-                                {'★'.repeat(order.feedback.rating)}{'☆'.repeat(5 - order.feedback.rating)}
-                              </span>
-                              <span className="text-[10px] text-stone-500 font-semibold">Diner Rating</span>
-                            </div>
-                            {order.feedback.comment && (
-                              <p className="text-stone-300 italic text-[11px]">&ldquo;{order.feedback.comment}&rdquo;</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Manual Status Switcher & Undo Button for ANY Status */}
-                    <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() => setStatusPickerOrder(order)}
-                        className="text-[11px] text-stone-400 hover:text-amber-400 font-medium transition flex items-center gap-1.5 py-1 px-2 rounded-lg hover:bg-neutral-800 active:scale-95"
-                        title="Change to any status or undo an accidental change"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5 text-stone-500" />
-                        <span>Undo / Switch Status</span>
-                      </button>
+                      )}
 
                       <span className="text-[10px] text-stone-500 font-mono">
                         #{order.id.slice(-6).toUpperCase()}

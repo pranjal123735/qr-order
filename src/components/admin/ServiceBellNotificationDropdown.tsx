@@ -61,10 +61,8 @@ export function ServiceBellNotificationDropdown({
     const unsub = DataStore.subscribeToServiceCalls(slug, () => {
       fetchCalls();
     });
-    const interval = setInterval(fetchCalls, 8000);
     return () => {
       unsub();
-      clearInterval(interval);
     };
   }, [slug]);
 

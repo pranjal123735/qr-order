@@ -895,7 +895,11 @@ export const DataStore = {
       if (res.ok) {
         const json = await res.json();
         if (json.calls && Array.isArray(json.calls)) {
-          setStored('service_calls', json.calls);
+          const current = getStored<ServiceCall[]>('service_calls', []);
+          const incomingIds = new Set(json.calls.map((c: ServiceCall) => c.id));
+          const others = current.filter(c => !incomingIds.has(c.id));
+          const updated = [...json.calls, ...others];
+          setStored('service_calls', updated);
           return json.calls as ServiceCall[];
         }
       }
@@ -904,7 +908,7 @@ export const DataStore = {
     }
 
     const calls = getStored<ServiceCall[]>('service_calls', []);
-    return calls.filter(c => c.restaurant_id === restaurantId);
+    return calls.filter(c => c.restaurant_id === restaurantId || restaurantId === 'hemu' || restaurantId === 'rustic-grill');
   },
 
   async resolveServiceCall(callId: string, waiterName?: string): Promise<boolean> {

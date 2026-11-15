@@ -201,31 +201,38 @@ function DedicatedBellsContent() {
     return () => clearInterval(timer);
   }, []);
 
-  const fetchCalls = async (shouldChime = false) => {
-    const res = await DataStore.getRestaurant(slug);
-    if (res) {
-      setRestaurant(res);
-      const calls = await DataStore.getServiceCalls(res.id);
-      const pendingCalls = calls.filter(c => c.status === 'PENDING');
-      const newCalls = pendingCalls.filter(c => !knownCallIdsRef.current.has(c.id));
+  const restaurantRef = useRef<Restaurant | null>(null);
 
-      if (shouldChime && audioEnabled) {
-        const eligibleCalls = newCalls.filter(c => !isTableSnoozed(c.table_number));
-        if (eligibleCalls.length > 0) {
-          const latestCall = eligibleCalls[0];
-          const speakText = getAnnouncementText(latestCall);
-          if (speechEnabled) {
-            audioManager.ringAndAnnounce(speakText);
-          } else {
-            audioManager.playServiceBell();
-          }
+  const fetchCalls = async (shouldChime = false) => {
+    let res = restaurantRef.current;
+    if (!res) {
+      res = await DataStore.getRestaurant(slug);
+      if (res) {
+        restaurantRef.current = res;
+        setRestaurant(res);
+      }
+    }
+    const targetId = res?.id || slug;
+    const calls = await DataStore.getServiceCalls(targetId);
+    const pendingCalls = calls.filter(c => c.status === 'PENDING');
+    const newCalls = pendingCalls.filter(c => !knownCallIdsRef.current.has(c.id));
+
+    if (shouldChime && audioEnabled) {
+      const eligibleCalls = newCalls.filter(c => !isTableSnoozed(c.table_number));
+      if (eligibleCalls.length > 0) {
+        const latestCall = eligibleCalls[0];
+        const speakText = getAnnouncementText(latestCall);
+        if (speechEnabled) {
+          audioManager.ringAndAnnounce(speakText);
+        } else {
+          audioManager.playServiceBell();
         }
       }
-
-      pendingCalls.forEach(c => knownCallIdsRef.current.add(c.id));
-      setServiceCalls(pendingCalls);
-      setAllServiceCalls(calls);
     }
+
+    pendingCalls.forEach(c => knownCallIdsRef.current.add(c.id));
+    setServiceCalls(pendingCalls);
+    setAllServiceCalls(calls);
     setLoading(false);
   };
 
@@ -234,10 +241,8 @@ function DedicatedBellsContent() {
     const unsubCalls = DataStore.subscribeToServiceCalls(slug, () => {
       fetchCalls(true);
     });
-    const interval = setInterval(() => fetchCalls(false), 8000);
     return () => {
       unsubCalls();
-      clearInterval(interval);
     };
   }, [slug, audioEnabled]);
 
