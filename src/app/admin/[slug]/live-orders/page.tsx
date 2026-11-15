@@ -1446,6 +1446,8 @@ function KitchenLiveOrdersContent() {
                     <div
                       key={order.id}
                       className={`bg-neutral-900 rounded-3xl border flex flex-col justify-between shadow-xl transition-all duration-200 relative ${
+                        openDishDropdown?.orderId === order.id ? 'z-30' : 'z-10'
+                      } ${
                         isPending
                           ? 'border-amber-500/70 shadow-amber-500/5'
                           : isOnTheWay
@@ -1496,7 +1498,7 @@ function KitchenLiveOrdersContent() {
                             key={item.id}
                             className={`py-2.5 first:pt-0 last:pb-0 transition ${
                               isRejected 
-                                ? 'opacity-70 bg-rose-950/10 -mx-1.5 px-1.5 rounded-xl' 
+                                ? 'bg-rose-950/15 -mx-1.5 px-1.5 rounded-xl border border-rose-900/30' 
                                 : ''
                             }`}
                           >
@@ -1504,7 +1506,7 @@ function KitchenLiveOrdersContent() {
                               {/* Quantity + Name */}
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 <span className={`px-2 py-0.5 font-black text-xs rounded-lg shrink-0 ${
-                                  isRejected ? 'bg-rose-950 text-rose-400 border border-rose-900/40' : 'bg-neutral-800 text-amber-400'
+                                  isRejected ? 'bg-rose-950 text-rose-400/80 border border-rose-900/40 opacity-70' : 'bg-neutral-800 text-amber-400'
                                 }`}>
                                   {item.quantity}×
                                 </span>
@@ -1513,7 +1515,7 @@ function KitchenLiveOrdersContent() {
                                   <span
                                     className={`font-bold text-sm block leading-snug truncate ${
                                       isRejected 
-                                        ? 'line-through text-rose-400/80' 
+                                        ? 'line-through text-rose-400/70 opacity-70' 
                                         : 'text-white'
                                     }`}
                                   >
@@ -1565,14 +1567,14 @@ function KitchenLiveOrdersContent() {
                                     />
                                     <div 
                                       onClick={(e) => e.stopPropagation()}
-                                      className="absolute right-0 top-full mt-1.5 w-48 bg-neutral-900 border border-neutral-700/90 rounded-2xl shadow-2xl p-1.5 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100"
+                                      className="absolute right-0 top-full mt-1.5 w-56 sm:w-60 bg-neutral-950 border border-neutral-700 rounded-2xl shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ring-1 ring-black/80"
                                     >
-                                      <div className="px-2 py-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider border-b border-neutral-800 flex items-center justify-between">
-                                        <span>Status</span>
+                                      <div className="px-2.5 py-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider border-b border-neutral-800 flex items-center justify-between">
+                                        <span>Set Dish Status</span>
                                         <button 
                                           type="button" 
                                           onClick={() => setOpenDishDropdown(null)}
-                                          className="text-stone-500 hover:text-white"
+                                          className="text-stone-400 hover:text-white p-0.5 rounded transition"
                                         >
                                           ✕
                                         </button>
@@ -1587,20 +1589,20 @@ function KitchenLiveOrdersContent() {
                                               e.stopPropagation();
                                               setOpenDishDropdown(null);
                                               if (!isCurrent) {
-                                                promptDishStatusChange(order, item, opt.status, `Set to ${opt.label}`);
+                                                handleQuickDishStatus(order, item, opt.status);
                                               }
                                             }}
-                                            className={`w-full px-2.5 py-1.5 rounded-xl text-left flex items-center justify-between text-xs font-semibold transition ${
+                                            className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between text-xs font-semibold transition cursor-pointer ${
                                               isCurrent
-                                                ? 'bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30'
-                                                : 'text-stone-300 hover:text-white hover:bg-neutral-800'
+                                                ? 'bg-amber-500/20 text-amber-400 font-bold border border-amber-500/40 shadow-xs'
+                                                : 'text-stone-300 hover:text-white hover:bg-neutral-850'
                                             }`}
                                           >
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-sm">{opt.icon}</span>
-                                              <span>{opt.label}</span>
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span className="text-sm shrink-0">{opt.icon}</span>
+                                              <span className="truncate">{opt.label}</span>
                                             </div>
-                                            {isCurrent && <span className="text-[10px] text-amber-400 font-bold">✓</span>}
+                                            {isCurrent && <span className="text-xs text-amber-400 font-black shrink-0 ml-1.5">✓</span>}
                                           </button>
                                         );
                                       })}
