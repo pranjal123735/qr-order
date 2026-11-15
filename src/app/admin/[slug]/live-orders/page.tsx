@@ -447,20 +447,8 @@ function KitchenLiveOrdersContent() {
           const newCalls = pendingCalls.filter(c => !knownCallIdsRef.current.has(c.id));
 
           if (newCalls.length > 0) {
-            // Immediately mark as known so subsequent quick polls do not duplicate audio
+            // Track known calls (audio and push alert handled globally by GlobalServiceBellPushNotification)
             newCalls.forEach(c => knownCallIdsRef.current.add(c.id));
-
-            // Filter out snoozed tables
-            const eligibleCalls = newCalls.filter(c => !isTableSnoozed(c.table_number));
-            if (eligibleCalls.length > 0 && audioEnabled) {
-              const latestCall = eligibleCalls[0];
-              const speakText = getAnnouncementText(latestCall);
-              if (speechEnabled) {
-                audioManager.ringAndAnnounce(speakText);
-              } else {
-                audioManager.playServiceBell();
-              }
-            }
           } else if (allOrders.length > prevOrderCountRef.current && audioEnabled) {
             audioManager.playNewOrderChime();
           }
@@ -584,11 +572,47 @@ function KitchenLiveOrdersContent() {
     });
   };
 
+  const handleQuickDishStatus = async (order: Order, item: OrderItem, newStatus: ItemPrepStatus) => {
+    // 1. Optimistic instant React state update (0ms lag!)
+    setOrders(prevOrders => prevOrders.map(o => {
+      if (o.id !== order.id) return o;
+      const updatedItems = o.items?.map(it => 
+        it.id === item.id 
+          ? { ...it, item_status: newStatus, is_prepared: newStatus === 'READY' || newStatus === 'ON_THE_WAY' || newStatus === 'SERVED' } 
+          : it
+      );
+      return { ...o, items: updatedItems };
+    }));
+
+    setCheckedDishIds(prev => ({ ...prev, [item.id]: newStatus === 'SERVED' || newStatus === 'READY' }));
+
+    if (newStatus === 'ON_THE_WAY' || newStatus === 'SERVED') {
+      audioManager.playSuccessChime();
+    } else if (newStatus === 'REJECTED') {
+      audioManager.playCancelTone();
+    }
+
+    // 2. Persist to API server, Supabase notes, and localStorage
+    await DataStore.updateOrderItemStatus(order.id, item.id, newStatus);
+    fetchOrders();
+  };
+
   const confirmAndUpdateDishStatus = async () => {
     if (!dishConfirmDialog) return;
     const { orderId, dishId, newStatus } = dishConfirmDialog;
     setDishConfirmDialog(null);
     setDishPicker(null);
+
+    // Optimistic instant React state update
+    setOrders(prevOrders => prevOrders.map(o => {
+      if (o.id !== orderId) return o;
+      const updatedItems = o.items?.map(it => 
+        it.id === dishId 
+          ? { ...it, item_status: newStatus, is_prepared: newStatus === 'READY' || newStatus === 'ON_THE_WAY' || newStatus === 'SERVED' } 
+          : it
+      );
+      return { ...o, items: updatedItems };
+    }));
 
     setCheckedDishIds(prev => ({ ...prev, [dishId]: newStatus === 'SERVED' || newStatus === 'READY' }));
     await DataStore.updateOrderItemStatus(orderId, dishId, newStatus);
@@ -666,26 +690,6 @@ function KitchenLiveOrdersContent() {
       <div className="min-h-screen bg-neutral-950 text-stone-100 flex flex-col font-sans select-none antialiased overflow-x-clip w-full">
       {/* 1. Permanently Fixed Top Header & Tabs Bar */}
       <div className="fixed top-0 inset-x-0 z-50 bg-neutral-900 border-b border-neutral-800 shadow-2xl backdrop-blur-md">
-        {/* Audio / Voice Autoplay Permission Unlock Banner */}
-        {!audioUnlocked && (
-          <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-orange-400 text-stone-950 px-4 py-2 text-xs font-black flex items-center justify-between shadow-md">
-            <div className="flex items-center gap-2">
-              <Volume2 className="w-4 h-4 animate-bounce" />
-              <span>Tap anywhere or click to activate live Kitchen Bell & Voice Announcements</span>
-            </div>
-            <button
-              onClick={async () => {
-                await audioManager.unlockAudio();
-                setAudioUnlocked(true);
-                audioManager.ringAndAnnounce('Kitchen audio and speech announcements active!');
-              }}
-              className="px-3.5 py-1.5 bg-stone-950 hover:bg-stone-900 text-white rounded-xl text-xs font-black shadow-md transition active:scale-95"
-            >
-              Enable Sound & Voice 🔊
-            </button>
-          </div>
-        )}
-
         {/* Sleek Top Navigation Bar */}
         <header className="px-3.5 sm:px-6 py-3 sm:py-3.5 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 border-b border-neutral-800/80">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -810,9 +814,9 @@ function KitchenLiveOrdersContent() {
           </div>
         </header>
 
-        {/* 2. Status Metric Tabs (Fixed / Sticky with Header) */}
-        <div className="bg-neutral-900/95 px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-3 overflow-hidden">
-          <div className="flex items-center gap-1.5 sm:gap-2 no-scrollbar w-full overflow-x-auto">
+        {/* 2. Status Metric Tabs (Fixed / Sticky with Header - Never Overlapped) */}
+        <div className="bg-neutral-900/95 border-b border-neutral-800/70 px-3.5 sm:px-6 py-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 no-scrollbar flex-1 min-w-0 overflow-x-auto py-0.5">
             <button
               onClick={() => setActiveTab('ALL')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
@@ -913,9 +917,10 @@ function KitchenLiveOrdersContent() {
             </button>
           </div>
 
-          <span className="hidden lg:inline text-xs text-stone-400 font-medium shrink-0">
-            💡 Tap checkbox for Ready, or tap status pill (⏳ Queued / 🍳 Cooking / ✓ Ready) to cycle dish status
-          </span>
+          {/* Compact tip only on ultra-wide desktop (never crowds or hides tabs) */}
+          <div className="hidden 2xl:flex items-center gap-1.5 text-[11px] text-stone-400 font-medium shrink-0 bg-neutral-950/60 border border-neutral-800 px-3 py-1 rounded-xl">
+            <span>💡 <strong>Cook Tip:</strong> Tap checkbox for Ready, or tap status badge to advance stage</span>
+          </div>
         </div>
       </div>
 
@@ -1366,104 +1371,8 @@ function KitchenLiveOrdersContent() {
             )}
           </div>
         ) : (
-          /* VIEW B: KITCHEN ORDER TICKETS GRID (WITH COMPACT BELL BANNER ON TOP) */
+          /* VIEW B: KITCHEN ORDER TICKETS GRID */
           <>
-            {/* Compact Table Service Bells Alert Section (Visible when cooking orders) */}
-            {serviceCalls.length > 0 && (
-              <div className="mb-6 bg-gradient-to-r from-amber-950/50 via-neutral-900 to-amber-950/30 border border-amber-500/60 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-xs">
-                      <BellRing className="w-4 h-4 animate-bounce" />
-                    </div>
-                    <div>
-                      <h3 className="font-extrabold text-sm sm:text-base text-amber-400 flex items-center gap-2">
-                        <span>Live Table Service Bells</span>
-                        <span className="px-2 py-0.5 bg-amber-500 text-stone-950 text-[10px] font-black rounded-full">
-                          {serviceCalls.length} Calling
-                        </span>
-                      </h3>
-                      <p className="text-[11px] text-stone-400">
-                        Customers ringing bell for water, bill, food info, or waiter
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('BELLS')}
-                    className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs rounded-xl shadow-md transition active:scale-95 flex items-center gap-1.5"
-                  >
-                    <span>Open Full Waiter Dispatch Center</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-                  {[...serviceCalls]
-                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                    .slice(0, 3)
-                    .map((call, idx) => {
-                      const details = getServiceCallDetails(call);
-
-                      return (
-                        <div
-                          key={call.id}
-                          className="bg-neutral-900 border border-amber-500/40 rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-md hover:border-amber-400 transition"
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-2 py-0.5 bg-amber-500 text-stone-950 font-black text-xs rounded-md">
-                                  Table #{call.table_number}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 ${details.badgeClass}`}>
-                                  {details.icon}
-                                  <span>{details.label}</span>
-                                </span>
-                              </div>
-                              <span className="text-[10px] text-stone-400 font-mono">
-                                {formatElapsedTimer(call.created_at)}
-                              </span>
-                            </div>
-
-                            {call.notes && (
-                              <p className="text-xs text-stone-200 bg-neutral-950/80 p-2 rounded-lg border border-neutral-800 mt-2 font-medium">
-                                &ldquo;{call.notes}&rdquo;
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 pt-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                audioManager.unlockAudio();
-                                setAudioUnlocked(true);
-                                audioManager.ringAndAnnounce(getAnnouncementText(call));
-                              }}
-                              className="py-1.5 px-2.5 bg-neutral-800 hover:bg-neutral-750 text-amber-400 font-bold text-xs rounded-lg border border-neutral-700 transition"
-                              title="Speak this table call aloud"
-                            >
-                              <Volume2 className="w-3.5 h-3.5" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleResolveCall(call.id, 'Floor Waiter')}
-                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg shadow-sm transition active:scale-98 flex items-center justify-center gap-1.5"
-                            >
-                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                              <span>Send Waiter to Table #{call.table_number}</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            )}
-
             {/* Kitchen Live Order Cards Grid */}
             {loading ? (
               <div className="py-24 text-center text-stone-500">
@@ -1481,7 +1390,16 @@ function KitchenLiveOrdersContent() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div>
+                {/* Cook Workflow Tip Banner (Inside workspace, never clutters tabs) */}
+                <div className="mb-4 px-4 py-2.5 bg-neutral-900/70 border border-neutral-800 rounded-2xl flex items-center justify-between gap-3 text-xs text-stone-400 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-400 text-sm">💡</span>
+                    <span><strong>Cook Workflow:</strong> Check the box to mark a dish ready, or tap the status pill (⏳ Queued / 🍳 Cooking / 🚚 On the Way / 🍽️ Served) to cycle dish stage.</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {displayedOrders.map((order) => {
                   const isPending = order.status === 'PENDING';
                   const isCooking = order.status === 'CONFIRMED' || order.status === 'PREPARING';
@@ -1674,6 +1592,137 @@ function KitchenLiveOrdersContent() {
                                 <span>Note: {item.notes}</span>
                               </div>
                             )}
+
+                            {/* Per-Item Direct Action Controls (Accept, Cook, Ready, Decline) */}
+                            <div className="mt-2 ml-8 flex items-center gap-1.5 flex-wrap">
+                              {(!itemStatus || itemStatus === 'QUEUED' || itemStatus === 'PENDING') && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickDishStatus(order, item, 'COOKING');
+                                    }}
+                                    className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[11px] font-black transition flex items-center gap-1 active:scale-95 cursor-pointer shadow-2xs"
+                                    title="Accept & start cooking this dish on stove"
+                                  >
+                                    <Flame className="w-3 h-3 text-amber-400" />
+                                    <span>Accept & Cook 🔥</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickDishStatus(order, item, 'READY');
+                                    }}
+                                    className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-lg text-[11px] font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer"
+                                    title="Mark this dish ready"
+                                  >
+                                    <Check className="w-3 h-3 text-emerald-400" />
+                                    <span>Ready</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      promptDishStatusChange(order, item, 'REJECTED', 'Decline / Out of Stock');
+                                    }}
+                                    className="px-2 py-1 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 rounded-lg text-[11px] font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer"
+                                    title="Decline this dish (out of stock)"
+                                  >
+                                    <X className="w-3 h-3 text-rose-400" />
+                                    <span>Decline</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {itemStatus === 'COOKING' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickDishStatus(order, item, 'READY');
+                                    }}
+                                    className="px-2.5 py-1 bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/50 rounded-lg text-[11px] font-black transition flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
+                                    title="Mark dish prepared & ready"
+                                  >
+                                    <Check className="w-3 h-3 stroke-[3] text-emerald-400" />
+                                    <span>Mark Ready ✓</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickDishStatus(order, item, 'ON_THE_WAY');
+                                    }}
+                                    className="px-2 py-1 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/40 rounded-lg text-[11px] font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer"
+                                    title="Send dish on the way to table"
+                                  >
+                                    <Rocket className="w-3 h-3 text-orange-400" />
+                                    <span>Send to Table</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {itemStatus === 'READY' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickDishStatus(order, item, 'ON_THE_WAY');
+                                    }}
+                                    className="px-2.5 py-1 bg-orange-500/25 hover:bg-orange-500/35 text-orange-300 border border-orange-500/50 rounded-lg text-[11px] font-black transition flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
+                                  >
+                                    <Rocket className="w-3 h-3 text-orange-400" />
+                                    <span>Send to Table 🚚</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleQuickDishStatus(order, item, 'SERVED');
+                                    }}
+                                    className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 rounded-lg text-[11px] font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 text-blue-400" />
+                                    <span>Served</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {itemStatus === 'ON_THE_WAY' && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuickDishStatus(order, item, 'SERVED');
+                                  }}
+                                  className="px-2.5 py-1 bg-blue-500/25 hover:bg-blue-500/35 text-blue-300 border border-blue-500/50 rounded-lg text-[11px] font-black transition flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
+                                >
+                                  <CheckCircle2 className="w-3 h-3 text-blue-400" />
+                                  <span>Mark Served 🍽️</span>
+                                </button>
+                              )}
+
+                              {itemStatus === 'REJECTED' && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuickDishStatus(order, item, 'QUEUED');
+                                  }}
+                                  className="px-2 py-0.5 bg-neutral-800 hover:bg-neutral-750 text-stone-400 hover:text-white rounded-md text-[10px] font-bold transition"
+                                >
+                                  ↺ Undo Decline
+                                </button>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -1834,7 +1883,8 @@ function KitchenLiveOrdersContent() {
               );
             })}
           </div>
-        )}
+        </div>
+      )}
         </>
       )}
       </main>

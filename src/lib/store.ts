@@ -100,6 +100,80 @@ function setStored<T>(key: string, value: T): void {
   }
 }
 
+// Helper functions for persistent dish-level cooking status
+function getItemStatusesMap(): Record<string, { status: import('@/types/database').ItemPrepStatus; isPrepared: boolean }> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem('qr_item_statuses_map');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function setItemStatusInMap(itemId: string, status: import('@/types/database').ItemPrepStatus, isPrepared: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    const map = getItemStatusesMap();
+    map[itemId] = { status, isPrepared };
+    localStorage.setItem('qr_item_statuses_map', JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+
+function enrichOrderWithItemStatuses(
+  order: Order, 
+  statusMap: Record<string, { status: import('@/types/database').ItemPrepStatus; isPrepared: boolean }>
+): Order {
+  if (!order.items || order.items.length === 0) return order;
+
+  const enrichedItems = order.items.map(it => {
+    let itemStatus = it.item_status;
+    let cleanNotes = it.notes;
+
+    // 1. Check notes tag from Supabase notes column
+    if (it.notes && it.notes.includes('__STATUS:')) {
+      const match = it.notes.match(/__STATUS:([A-Z_]+)__/);
+      if (match && match[1]) {
+        itemStatus = match[1] as import('@/types/database').ItemPrepStatus;
+      }
+      cleanNotes = it.notes.replace(/__STATUS:[A-Z_]+__/g, '').trim() || undefined;
+    }
+
+    // 2. Check local/server status map
+    const fromMap = statusMap[it.id];
+    if (fromMap) {
+      itemStatus = fromMap.status;
+    }
+
+    // 3. Fallback based on order status or is_prepared
+    if (!itemStatus) {
+      if (it.is_prepared) itemStatus = 'READY';
+      else if (order.status === 'PREPARING') itemStatus = 'COOKING';
+      else if (order.status === 'ON_THE_WAY') itemStatus = 'ON_THE_WAY';
+      else if (order.status === 'SERVED') itemStatus = 'SERVED';
+      else if (order.status === 'REJECTED') itemStatus = 'REJECTED';
+      else if (order.status === 'CONFIRMED') itemStatus = 'QUEUED';
+      else itemStatus = 'PENDING';
+    }
+
+    const isPrepared = itemStatus === 'READY' || itemStatus === 'ON_THE_WAY' || itemStatus === 'SERVED';
+
+    return {
+      ...it,
+      item_status: itemStatus,
+      is_prepared: isPrepared,
+      notes: cleanNotes,
+    };
+  });
+
+  return {
+    ...order,
+    items: enrichedItems,
+  };
+}
+
 export const DataStore = {
   // 1. Get All Restaurants (for Multi-Tenant Switcher / Directory)
   async getAllRestaurants(): Promise<Restaurant[]> {
@@ -456,30 +530,35 @@ export const DataStore = {
 
   // 6. Get Order by ID
   async getOrder(orderId: string): Promise<Order | null> {
+    const statusMap = getItemStatusesMap();
     if (isSupabaseConfigured && supabase) {
       const { data: order, error } = await supabase
         .from('orders')
         .select('*, items:order_items(*)')
         .eq('id', orderId)
         .single();
-      if (!error && order) return order as Order;
+      if (!error && order) return enrichOrderWithItemStatuses(order as Order, statusMap);
     }
     const orders = getStored<Order[]>('orders', INITIAL_ORDERS);
-    return orders.find(o => o.id === orderId) || null;
+    const found = orders.find(o => o.id === orderId);
+    return found ? enrichOrderWithItemStatuses(found, statusMap) : null;
   },
 
   // 7. Get All Orders for Restaurant (Strictly scoped to restaurant_id)
   async getOrders(restaurantId: string): Promise<Order[]> {
+    const statusMap = getItemStatusesMap();
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
         .from('orders')
         .select('*, items:order_items(*)')
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false });
-      if (!error && data) return data as Order[];
+      if (!error && data) {
+        return (data as Order[]).map(o => enrichOrderWithItemStatuses(o, statusMap));
+      }
     }
     const all = getStored<Order[]>('orders', INITIAL_ORDERS);
-    return all.filter(o => o.restaurant_id === restaurantId);
+    return all.filter(o => o.restaurant_id === restaurantId).map(o => enrichOrderWithItemStatuses(o, statusMap));
   },
 
   // 8. Cancel Order (Permitted only if status is PENDING)
@@ -554,14 +633,41 @@ export const DataStore = {
   async updateOrderItemStatus(orderId: string, itemId: string, status: import('@/types/database').ItemPrepStatus): Promise<boolean> {
     const isPrepared = status === 'READY' || status === 'ON_THE_WAY' || status === 'SERVED';
     
+    // 1. Immediately store in client map (never wiped by poll)
+    setItemStatusInMap(itemId, status, isPrepared);
+
+    // 2. Post to Next.js API server for cross-device sync & disk backup
+    try {
+      fetch('/api/orders/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, itemId, status }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
+
+    // 3. Persist in Supabase order_items notes column with __STATUS:...__ tag
     if (isSupabaseConfigured && supabase) {
       try {
+        const { data: itemData } = await supabase
+          .from('order_items')
+          .select('notes')
+          .eq('id', itemId)
+          .single();
+
+        let cleanNotes = itemData?.notes || '';
+        cleanNotes = cleanNotes.replace(/__STATUS:[A-Z_]+__/g, '').trim();
+        const updatedNotes = cleanNotes 
+          ? `${cleanNotes} __STATUS:${status}__` 
+          : `__STATUS:${status}__`;
+
         await supabase
           .from('order_items')
-          .update({ item_status: status, is_prepared: isPrepared })
+          .update({ notes: updatedNotes })
           .eq('id', itemId);
       } catch (e) {
-        console.warn('Could not update order_items in supabase:', e);
+        console.warn('Could not update order_items notes in supabase:', e);
       }
     }
 
@@ -579,16 +685,12 @@ export const DataStore = {
       // Smart auto-adjustment of overall order status based on individual items
       const nonRejected = updatedItems.filter(it => it.item_status !== 'REJECTED');
       if (updatedItems.length > 0 && nonRejected.length === 0) {
-        // Every single item was rejected
         newOrderStatus = 'REJECTED';
       } else if (nonRejected.length > 0 && nonRejected.every(it => it.item_status === 'SERVED')) {
-        // All non-rejected items have been served
         newOrderStatus = 'SERVED';
       } else if (nonRejected.some(it => it.item_status === 'ON_THE_WAY') && ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status)) {
-        // At least one item is on the way
         newOrderStatus = 'ON_THE_WAY';
       } else if (nonRejected.some(it => it.item_status === 'COOKING') && ['PENDING', 'CONFIRMED'].includes(o.status)) {
-        // At least one item is cooking
         newOrderStatus = 'PREPARING';
       }
 
@@ -601,8 +703,23 @@ export const DataStore = {
     });
 
     setStored('orders', updated);
+
+    // If order status adjusted, persist in Supabase orders table
+    if (newOrderStatus && isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('orders')
+          .update({ status: newOrderStatus, updated_at: new Date().toISOString() })
+          .eq('id', orderId);
+      } catch {
+        // ignore
+      }
+    }
+
     localSync.emit('ORDER_UPDATED', { orderId, itemId, itemStatus: status, isPrepared });
-    localSync.emit('ORDER_STATUS_CHANGED', { orderId, status: newOrderStatus });
+    if (newOrderStatus) {
+      localSync.emit('ORDER_STATUS_CHANGED', { orderId, status: newOrderStatus });
+    }
     return true;
   },
 

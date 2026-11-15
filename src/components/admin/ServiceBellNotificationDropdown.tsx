@@ -183,6 +183,8 @@ export function ServiceBellNotificationDropdown({
         className={`relative p-2 sm:p-2.5 rounded-xl border transition-all duration-200 flex items-center justify-center ${
           sortedCalls.length > 0
             ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/60 text-amber-300 shadow-md shadow-amber-500/10'
+            : isOpen
+            ? 'bg-neutral-800 border-amber-400 text-amber-300 shadow-sm ring-1 ring-amber-400/40'
             : 'bg-neutral-850 hover:bg-neutral-800 border-neutral-700/80 text-stone-300 hover:text-white'
         }`}
       >
@@ -200,155 +202,188 @@ export function ServiceBellNotificationDropdown({
         )}
       </button>
 
-      {/* Dropdown Popover List */}
+      {/* Dropdown Popover List - Fully Responsive across all Mobile & Desktop screens */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-[340px] sm:w-[400px] max-w-[92vw] bg-neutral-900 border border-neutral-750 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-150">
-          {/* Dropdown Header */}
-          <div className="p-3.5 bg-neutral-850/90 border-b border-neutral-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                <BellRing className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="font-black text-xs sm:text-sm text-white flex items-center gap-2">
-                  <span>Table Service Bells</span>
-                  <span className={`px-2 py-0.2 text-[10px] font-bold rounded-full ${
-                    sortedCalls.length > 0 
-                      ? 'bg-amber-500 text-neutral-950' 
-                      : 'bg-neutral-800 text-stone-400'
+        <>
+          {/* Mobile backdrop overlay to dismiss on touch */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 sm:hidden"
+            onClick={() => setIsOpen(false)}
+          />
+
+          <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2.5 w-auto sm:w-[380px] max-w-[calc(100vw-1.5rem)] z-50 animate-in fade-in zoom-in-95 sm:zoom-in-100 duration-150">
+            {/* Top pointer arrow on desktop pointing to the bell button */}
+            <div className="hidden sm:block absolute -top-1.5 right-3.5 w-3 h-3 bg-neutral-850 border-t border-l border-neutral-750 rotate-45 z-10" />
+
+            <div className="bg-neutral-900 border border-neutral-750 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh]">
+              {/* Dropdown Header */}
+              <div className="p-3.5 bg-neutral-850/95 border-b border-neutral-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                    sortedCalls.length > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-neutral-800 text-stone-400'
                   }`}>
-                    {sortedCalls.length} {sortedCalls.length === 1 ? 'call' : 'calls'}
-                  </span>
-                </h4>
-                <p className="text-[10px] text-stone-400">
-                  Oldest requests appear first in queue
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg hover:bg-neutral-750 text-stone-400 hover:text-white transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* List of Ringing Calls */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-neutral-800/80 p-2 space-y-2">
-            {sortedCalls.length === 0 ? (
-              <div className="py-10 text-center px-4 space-y-2">
-                <div className="w-10 h-10 rounded-xl bg-neutral-800 flex items-center justify-center mx-auto text-stone-500">
-                  <Bell className="w-5 h-5 opacity-60" />
-                </div>
-                <p className="text-xs font-bold text-white">No Table Bells Waiting</p>
-                <p className="text-[11px] text-stone-400">
-                  All customer calls are currently attended. When a diner rings the bell from their table QR code, it will alert here instantly.
-                </p>
-              </div>
-            ) : (
-              sortedCalls.map((call, idx) => {
-                const isFirst = idx === 0;
-                const badge = getReasonBadge(call);
-                const diffSeconds = Math.max(0, Math.floor((nowTimestamp - new Date(call.created_at).getTime()) / 1000));
-                const mins = Math.floor(diffSeconds / 60);
-                const isUrgent = mins >= 4;
-                const isWarning = mins >= 2 && mins < 4;
-
-                return (
-                  <div
-                    key={call.id}
-                    className={`p-3 rounded-xl transition border ${
-                      isFirst
-                        ? 'bg-amber-950/25 border-amber-500/40 ring-1 ring-amber-500/20'
-                        : isUrgent
-                        ? 'bg-rose-950/20 border-rose-500/40'
-                        : 'bg-neutral-950/50 border-neutral-800/80 hover:border-neutral-700'
-                    }`}
-                  >
-                    {/* Top Row: Stand + Rank + Reason + Timer */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="px-2.5 py-0.5 bg-amber-500 text-neutral-950 font-black text-xs rounded-lg shadow-xs">
-                          Table #{call.table_number}
-                        </span>
-
-                        <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold flex items-center gap-1 ${badge.color}`}>
-                          {badge.icon}
-                          <span>{badge.label}</span>
-                        </span>
-
-                        {isFirst ? (
-                          <span className="px-1.5 py-0.2 bg-amber-400 text-neutral-950 font-black text-[9px] rounded-md uppercase">
-                            #1 Priority
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-stone-500 font-bold">
-                            #{idx + 1}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Timer */}
-                      <span className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
-                        isUrgent
-                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse'
-                          : isWarning
-                          ? 'bg-amber-500/20 text-amber-400'
-                          : 'bg-neutral-800 text-stone-400'
-                      }`}>
-                        <Clock className="w-3 h-3" />
-                        <span>{formatTimer(call.created_at)}</span>
-                      </span>
-                    </div>
-
-                    {/* Optional Note */}
-                    {call.notes && (
-                      <p className="mt-1.5 text-[11px] text-amber-200/90 bg-neutral-900/90 px-2 py-1 rounded-lg border border-neutral-800 font-medium line-clamp-2">
-                        &ldquo;{call.notes}&rdquo;
-                      </p>
+                    {sortedCalls.length > 0 ? (
+                      <BellRing className="w-4 h-4 animate-bounce" />
+                    ) : (
+                      <Bell className="w-4 h-4" />
                     )}
+                  </div>
+                  <div>
+                    <h4 className="font-black text-xs sm:text-sm text-white flex items-center gap-2">
+                      <span>Table Service Bells</span>
+                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                        sortedCalls.length > 0 
+                          ? 'bg-amber-500 text-neutral-950 font-black animate-pulse' 
+                          : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      }`}>
+                        {sortedCalls.length > 0 ? `${sortedCalls.length} Calling` : '0 Active'}
+                      </span>
+                    </h4>
+                    <p className="text-[10px] text-stone-400">
+                      {sortedCalls.length > 0 ? 'Oldest requests appear first in queue' : 'All tables currently attended'}
+                    </p>
+                  </div>
+                </div>
 
-                    {/* Action Buttons */}
-                    <div className="mt-2.5 pt-2 border-t border-neutral-800 flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => handleSpeak(e, call)}
-                        className="p-1.5 bg-neutral-800 hover:bg-neutral-750 text-amber-400 rounded-lg border border-neutral-700 transition"
-                        title="Speak table call aloud"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                      </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 rounded-lg hover:bg-neutral-750 text-stone-400 hover:text-white transition"
+                  title="Close popover"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => handleResolve(e, call.id)}
-                        className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg transition active:scale-95 flex items-center justify-center gap-1.5 shadow-sm"
-                      >
-                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Send Waiter to Table #{call.table_number}</span>
-                      </button>
+              {/* List of Ringing Calls */}
+              <div className="max-h-[380px] overflow-y-auto divide-y divide-neutral-800/80 p-2 space-y-2">
+                {sortedCalls.length === 0 ? (
+                  <div className="py-7 px-4 text-center space-y-2.5">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400 shadow-xs">
+                      <Check className="w-5 h-5 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">All Tables Attended</p>
+                      <p className="text-[11px] text-stone-400 max-w-[260px] mx-auto leading-relaxed mt-0.5">
+                        No diners waiting for service. When a table rings from their QR code, it will alert here instantly.
+                      </p>
                     </div>
                   </div>
-                );
-              })
-            )}
-          </div>
+                ) : (
+                  sortedCalls.map((call, idx) => {
+                    const isFirst = idx === 0;
+                    const badge = getReasonBadge(call);
+                    const diffSeconds = Math.max(0, Math.floor((nowTimestamp - new Date(call.created_at).getTime()) / 1000));
+                    const mins = Math.floor(diffSeconds / 60);
+                    const isUrgent = mins >= 4;
+                    const isWarning = mins >= 2 && mins < 4;
 
-          {/* Dropdown Footer: Link to Dedicated Separate Page */}
-          <div className="p-2.5 bg-neutral-850/80 border-t border-neutral-800 flex items-center justify-between">
-            <Link
-              href={`/admin/${slug}/bells`}
-              onClick={() => setIsOpen(false)}
-              className="w-full py-2 px-3 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
-            >
-              <span>Open Full Service Bells Page</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+                    return (
+                      <div
+                        key={call.id}
+                        className={`p-3 rounded-xl transition border ${
+                          isFirst
+                            ? 'bg-amber-950/25 border-amber-500/40 ring-1 ring-amber-500/20'
+                            : isUrgent
+                            ? 'bg-rose-950/20 border-rose-500/40'
+                            : 'bg-neutral-950/50 border-neutral-800/80 hover:border-neutral-700'
+                        }`}
+                      >
+                        {/* Top Row: Stand + Rank + Reason + Timer */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-2.5 py-0.5 bg-amber-500 text-neutral-950 font-black text-xs rounded-lg shadow-xs">
+                              Table #{call.table_number}
+                            </span>
+
+                            <span className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold flex items-center gap-1 ${badge.color}`}>
+                              {badge.icon}
+                              <span>{badge.label}</span>
+                            </span>
+
+                            {isFirst ? (
+                              <span className="px-1.5 py-0.2 bg-amber-400 text-neutral-950 font-black text-[9px] rounded-md uppercase">
+                                #1 Priority
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-stone-500 font-bold">
+                                #{idx + 1}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Timer */}
+                          <span className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                            isUrgent
+                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse'
+                              : isWarning
+                              ? 'bg-amber-500/20 text-amber-400'
+                              : 'bg-neutral-800 text-stone-400'
+                          }`}>
+                            <Clock className="w-3 h-3" />
+                            <span>{formatTimer(call.created_at)}</span>
+                          </span>
+                        </div>
+
+                        {/* Optional Note */}
+                        {call.notes && (
+                          <p className="mt-1.5 text-[11px] text-amber-200/90 bg-neutral-900/90 px-2 py-1 rounded-lg border border-neutral-800 font-medium line-clamp-2">
+                            &ldquo;{call.notes}&rdquo;
+                          </p>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="mt-2.5 pt-2 border-t border-neutral-800 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => handleSpeak(e, call)}
+                            className="p-1.5 bg-neutral-800 hover:bg-neutral-750 text-amber-400 rounded-lg border border-neutral-700 transition"
+                            title="Speak table call aloud"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleResolve(e, call.id)}
+                            className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-lg transition active:scale-95 flex items-center justify-center gap-1.5 shadow-sm"
+                          >
+                            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>Send Waiter to Table #{call.table_number}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Dropdown Footer: Link to Dedicated Separate Page */}
+              <div className="p-2.5 bg-neutral-850/80 border-t border-neutral-800 flex items-center justify-between">
+                {sortedCalls.length === 0 ? (
+                  <Link
+                    href={`/admin/${slug}/bells`}
+                    onClick={() => setIsOpen(false)}
+                    className="w-full py-2 px-3 bg-neutral-800 hover:bg-neutral-750 text-stone-300 hover:text-white font-bold text-xs rounded-xl border border-neutral-700/80 transition flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <span>Open Full Service Bells Page</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/admin/${slug}/bells`}
+                    onClick={() => setIsOpen(false)}
+                    className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-98"
+                  >
+                    <span>Open Full Waiter Dispatch Center ({sortedCalls.length})</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
-    </div>
-  );
+  </div>
+);
 }

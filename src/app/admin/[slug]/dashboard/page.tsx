@@ -37,6 +37,7 @@ function DashboardContent() {
   const [serviceCallsCount, setServiceCallsCount] = useState<number>(0);
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState('');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     const currentOwner = AuthService.getCurrentOwner();
@@ -111,18 +112,28 @@ function DashboardContent() {
         </div>
 
         {/* Header Action */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <ServiceBellNotificationDropdown slug={slug} />
 
           <Link
             href={`/r/${slug}?table=1`}
             target="_blank"
-            className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+            className="p-2 sm:px-3 sm:py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
             title="Preview diner menu in new tab"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">Diner View</span>
+            <span className="hidden sm:inline">Diner View</span>
           </Link>
+
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            type="button"
+            className="p-2 sm:px-3 sm:py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95"
+            title="Sign out of Admin Portal"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
         </div>
       </header>
 
@@ -318,7 +329,62 @@ function DashboardContent() {
             </div>
           </Link>
         </div>
+
+        {/* Account Info & Sign Out Footer */}
+        <div className="pt-6 pb-2 border-t border-stone-850 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-400">
+          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <span>Signed in as <strong className="text-white">{owner?.email || 'Manager'}</strong></span>
+            <span className="px-2 py-0.5 rounded bg-stone-850 text-amber-400 text-[10px] font-bold border border-stone-750 uppercase">
+              {slug}
+            </span>
+          </div>
+
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            type="button"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition active:scale-95 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out of Admin Portal</span>
+          </button>
+        </div>
       </main>
+
+      {/* Sign Out Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-stone-900 border border-stone-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto shadow-md">
+              <LogOut className="w-6 h-6 stroke-[2.2]" />
+            </div>
+
+            <div>
+              <h3 className="font-black text-base text-white">Sign Out of Admin?</h3>
+              <p className="text-xs text-stone-400 mt-1">
+                You will be logged out of <strong className="text-white">{restaurant?.name || slug}</strong>. You can sign back in anytime.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="py-2.5 px-3 bg-stone-800 hover:bg-stone-750 text-stone-300 font-bold text-xs rounded-xl border border-stone-700 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="py-2.5 px-3 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </AdminAuthGuard>
   );

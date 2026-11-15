@@ -375,26 +375,6 @@ function DedicatedBellsContent() {
 
         {/* Main Content */}
         <main className="flex-1 p-4 sm:p-6 pt-24 sm:pt-24 max-w-7xl mx-auto w-full space-y-6">
-          {/* Audio Permission Banner */}
-          {!audioUnlocked && (
-            <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-orange-400 text-stone-950 px-4 py-2.5 rounded-2xl text-xs font-black flex items-center justify-between shadow-md">
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-4 h-4 animate-bounce" />
-                <span>Tap to activate live desk bell chime & voice announcements for table calls</span>
-              </div>
-              <button
-                onClick={async () => {
-                  await audioManager.unlockAudio();
-                  setAudioUnlocked(true);
-                  audioManager.ringAndAnnounce('Table service bell sound and announcements enabled!');
-                }}
-                className="px-3.5 py-1 bg-stone-950 hover:bg-stone-900 text-white rounded-xl text-xs font-black shadow-md transition active:scale-95"
-              >
-                Enable Sound 🔊
-              </button>
-            </div>
-          )}
-
           {/* Hero Stats Card */}
           <div className="bg-gradient-to-r from-amber-950/40 via-neutral-900 to-amber-950/20 border border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -557,14 +537,49 @@ function DedicatedBellsContent() {
 
           {/* Bells List View */}
           {bellFilter === 'ACTIVE' && activeQueue.length === 0 ? (
-            <div className="py-20 text-center bg-neutral-900/60 rounded-3xl border border-neutral-800/80 p-8 max-w-lg mx-auto space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                <CheckCircle2 className="w-8 h-8" />
+            <div className="w-full py-16 sm:py-20 text-center bg-neutral-900/60 rounded-3xl border border-neutral-800/80 p-6 sm:p-10 space-y-6 shadow-xl">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400 shadow-lg shadow-emerald-500/10">
+                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
               </div>
-              <h3 className="text-lg font-black text-white">All Tables Attended!</h3>
-              <p className="text-xs text-stone-400 max-w-sm mx-auto leading-relaxed">
-                No tables are currently waiting for service. When diners ring their service bell on table QR codes, requests appear here in chronological order.
-              </p>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">All Tables Attended!</h3>
+                <p className="text-xs sm:text-sm text-stone-400 max-w-lg mx-auto leading-relaxed mt-1.5">
+                  No tables are currently waiting for service. When diners ring their service bell on table QR codes, requests appear here live in chronological sequence.
+                </p>
+              </div>
+
+              {/* Responsive Operational Capabilities Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-4 max-w-4xl mx-auto text-left w-full">
+                <div className="bg-neutral-950/70 border border-neutral-800/80 rounded-2xl p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+                    <BellRing className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Live Push & Chime</h4>
+                    <p className="text-[11px] text-stone-400 mt-0.5">Desktop push alert pops up & voice announces immediately across all pages.</p>
+                  </div>
+                </div>
+
+                <div className="bg-neutral-950/70 border border-neutral-800/80 rounded-2xl p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+                    <Timer className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">FIFO Priority Queue</h4>
+                    <p className="text-[11px] text-stone-400 mt-0.5">Diners waiting the longest are crowned #1 Priority so service is fair.</p>
+                  </div>
+                </div>
+
+                <div className="bg-neutral-950/70 border border-neutral-800/80 rounded-2xl p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                    <Send className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">1-Click Dispatch</h4>
+                    <p className="text-[11px] text-stone-400 mt-0.5">Assign custom waiter names or send floor team with a single tap.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : bellFilter === 'ACTIVE' ? (
             <div className="space-y-4">
@@ -754,8 +769,19 @@ function DedicatedBellsContent() {
               </div>
 
               <div className="space-y-2.5">
-                {(bellFilter === 'RESOLVED' ? resolvedQueue : allServiceCalls.filter(c => bellTableFilter === 'ALL' || c.table_number === bellTableFilter))
-                  .map((call) => {
+                {(bellFilter === 'RESOLVED' ? resolvedQueue : allServiceCalls.filter(c => bellTableFilter === 'ALL' || c.table_number === bellTableFilter)).length === 0 ? (
+                  <div className="w-full py-16 text-center bg-neutral-900/60 rounded-3xl border border-neutral-800/80 p-8 space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-neutral-800 flex items-center justify-center mx-auto text-stone-500">
+                      <History className="w-7 h-7" />
+                    </div>
+                    <h3 className="text-base font-bold text-white">No Service History Found</h3>
+                    <p className="text-xs text-stone-400 max-w-sm mx-auto">
+                      {bellFilter === 'RESOLVED' ? 'No attended calls yet today.' : 'No service calls recorded yet.'}
+                    </p>
+                  </div>
+                ) : (
+                  (bellFilter === 'RESOLVED' ? resolvedQueue : allServiceCalls.filter(c => bellTableFilter === 'ALL' || c.table_number === bellTableFilter))
+                    .map((call) => {
                     const details = getServiceCallDetails(call);
                     const isResolved = call.status === 'RESOLVED';
 
@@ -803,7 +829,8 @@ function DedicatedBellsContent() {
                         </div>
                       </div>
                     );
-                  })}
+                  })
+                )}
               </div>
             </div>
           )}
